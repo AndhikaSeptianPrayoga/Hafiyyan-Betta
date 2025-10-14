@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-ssr
+coverage
+build
+.vscode
+*.log
+public/*.svg
+public/img/

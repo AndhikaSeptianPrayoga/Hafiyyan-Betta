@@ -1,0 +1,528 @@
+import { useMemo, useState } from 'react'
+import Modal from '../components/Modal'
+import Toast from '../components/Toast'
+import ConfirmDialog from '../components/ConfirmDialog'
+import useModal from '../../hooks/useModal'
+import useDebouncedValue from '../../hooks/useDebouncedValue'
+import useToast from '../../hooks/useToast'
+
+type Need = {
+  id: number
+  name: string // Judul produk
+  description: string
+  price: number
+  discountPercent: number
+  specs: string[]
+  includes: string[]
+  features: string[]
+  stock: number
+  mainImage: string
+  images: string[]
+}
+
+export default function KebutuhanAdminPage() {
+  const initialData: Need[] = useMemo(
+    () => [
+      {
+        id: 1,
+        name: 'Daun Ketapang Premium',
+        description: 'Daun ketapang pilihan untuk menjaga kualitas air dan kesehatan ikan cupang.',
+        price: 8000,
+        discountPercent: 0,
+        specs: ['Berat 50g', 'Dikeringkan alami', 'Daun utuh pilihan'],
+        includes: ['10 lembar daun ketapang'],
+        features: ['Meningkatkan kualitas air', 'Membantu pemulihan ikan'],
+        stock: 25,
+        mainImage: '/img/kebutuhan-img/2.png',
+        images: ['/img/kebutuhan-img/2.png'],
+      },
+      {
+        id: 2,
+        name: 'Garam Ikan 100gr',
+        description: 'Garam khusus ikan untuk perawatan harian dan karantina.',
+        price: 10000,
+        discountPercent: 0,
+        specs: ['Berat 100g', 'Kemasan ziplock'],
+        includes: ['1 pouch garam 100g'],
+        features: ['Meningkatkan daya tahan', 'Membantu proses penyembuhan'],
+        stock: 40,
+        mainImage: '/img/kebutuhan-img/1.png',
+        images: ['/img/kebutuhan-img/1.png'],
+      },
+    ],
+    []
+  )
+
+  const [items, setItems] = useState<Need[]>(initialData)
+  const formModal = useModal()
+  const [editing, setEditing] = useState<Need | null>(null)
+  const [form, setForm] = useState<Omit<Need, 'id'>>({
+    name: '',
+    description: '',
+    price: 0,
+    discountPercent: 0,
+    specs: [],
+    includes: [],
+    features: [],
+    stock: 0,
+    mainImage: '',
+    images: [],
+  })
+  const [specInput, setSpecInput] = useState('')
+  const [includeInput, setIncludeInput] = useState('')
+  const [featureInput, setFeatureInput] = useState('')
+  const [query, setQuery] = useState('')
+  const toast = useToast()
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const debouncedQuery = useDebouncedValue(query, 300)
+
+  const openCreate = () => {
+    setEditing(null)
+    setForm({
+      name: '',
+      description: '',
+      price: 0,
+      discountPercent: 0,
+      specs: [],
+      includes: [],
+      features: [],
+      stock: 0,
+      mainImage: '',
+      images: [],
+    })
+    setSpecInput('')
+    setIncludeInput('')
+    setFeatureInput('')
+    formModal.open()
+  }
+  const openEdit = (n: Need) => {
+    setEditing(n)
+    setForm({
+      name: n.name,
+      description: n.description,
+      price: n.price,
+      discountPercent: n.discountPercent,
+      specs: [...n.specs],
+      includes: [...n.includes],
+      features: [...n.features],
+      stock: n.stock,
+      mainImage: n.mainImage,
+      images: [...n.images],
+    })
+    setSpecInput('')
+    setIncludeInput('')
+    setFeatureInput('')
+    formModal.open()
+  }
+  const removeItem = (id: number) => setConfirmId(id)
+  const submitForm = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (editing) {
+      setItems((prev) => prev.map((i) => (i.id === editing.id ? { ...editing, ...form } : i)))
+      toast.show('Perubahan disimpan')
+    } else {
+      const nextId = items.length ? Math.max(...items.map((i) => i.id)) + 1 : 1
+      setItems((prev) => [{ id: nextId, ...form }, ...prev])
+      toast.show('Item baru ditambahkan')
+    }
+    formModal.close()
+  }
+
+  const addListItem = (key: 'specs' | 'includes' | 'features', value: string) => {
+    const v = value.trim()
+    if (!v) return
+    setForm((f) => ({ ...f, [key]: [...f[key], v] }))
+    if (key === 'specs') setSpecInput('')
+    if (key === 'includes') setIncludeInput('')
+    if (key === 'features') setFeatureInput('')
+  }
+
+  const removeListItem = (key: 'specs' | 'includes' | 'features', index: number) => {
+    setForm((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== index) }))
+  }
+
+  const onMainImageChange = (file?: File | null) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setForm((f) => ({ ...f, mainImage: String(reader.result) }))
+    reader.readAsDataURL(file)
+  }
+
+  const onGalleryChange = (files?: FileList | null) => {
+    if (!files || files.length === 0) return
+    const readers: Promise<string>[] = []
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      readers.push(
+        new Promise((resolve) => {
+          const r = new FileReader()
+          r.onload = () => resolve(String(r.result))
+          r.readAsDataURL(file)
+        })
+      )
+    }
+    Promise.all(readers).then((urls) => {
+      setForm((f) => ({ ...f, images: [...f.images, ...urls] }))
+    })
+  }
+
+  const removeImageAt = (index: number) => {
+    setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== index) }))
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Kelola Kebutuhan Cupang</h2>
+          <p className="text-sm text-gray-500">Tambah, ubah, dan hapus kebutuhan</p>
+        </div>
+        <button
+          onClick={openCreate}
+          className="px-4 py-2 rounded-lg bg-primary-main text-white hover:bg-primary-dark"
+        >
+          Tambah Item
+        </button>
+      </div>
+
+      <Modal
+        isOpen={formModal.isOpen}
+        title={editing ? 'Edit Kebutuhan' : 'Tambah Kebutuhan'}
+        onClose={formModal.close}
+      >
+        <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="md:col-span-3">
+            <label className="form-label">Judul</label>
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="form-input"
+              placeholder="Judul produk"
+            />
+          </div>
+          <div className="md:col-span-1">
+            <label className="form-label">Harga (Rp)</label>
+            <input
+              type="number"
+              value={form.price}
+              onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
+              className="form-input"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="form-label">Diskon (%)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={form.discountPercent}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  discountPercent: Math.max(0, Math.min(100, Number(e.target.value))),
+                }))
+              }
+              className="form-input"
+              placeholder="0 - 100"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="form-label">Stok</label>
+            <input
+              type="number"
+              min={0}
+              value={form.stock}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))
+              }
+              className="form-input"
+              placeholder="Jumlah stok tersedia"
+            />
+          </div>
+
+          {/* Upload Gambar */}
+          <div className="md:col-span-2">
+            <label className="form-label">Gambar Utama</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => onMainImageChange(e.target.files?.[0])}
+              className="form-input"
+            />
+            <p className="form-helper">
+              Pilih satu gambar utama produk. Disarankan resolusi cukup tinggi.
+            </p>
+            {form.mainImage && (
+              <div className="mt-2">
+                <img
+                  src={form.mainImage}
+                  alt="Gambar Utama"
+                  className="w-full h-40 object-cover rounded-lg border"
+                />
+              </div>
+            )}
+            <p className="form-helper">
+              Format JPG/PNG. Disarankan rasio 1:1 atau 4:3.
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="form-label">
+              Galeri (Sub Gambar)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => onGalleryChange(e.target.files)}
+              className="form-input"
+            />
+            <p className="form-helper">
+              Anda bisa memilih beberapa file sekaligus untuk galeri.
+            </p>
+            {form.images.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {form.images.map((img, idx) => (
+                  <div key={idx} className="relative">
+                    <img
+                      src={img}
+                      alt={`Galeri ${idx + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 text-xs bg-white/80 rounded px-2 py-1 border"
+                      onClick={() => removeImageAt(idx)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="form-helper">
+              Pilih beberapa file sekaligus untuk menambah galeri.
+            </p>
+          </div>
+
+          <div className="md:col-span-4">
+            <label className="form-label">Deskripsi</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              className="form-textarea min-h-[120px]"
+              placeholder="Deskripsi singkat produk"
+            />
+          </div>
+
+          {/* Spesifikasi Produk */}
+          <div className="md:col-span-2">
+            <label className="form-label">
+              Spesifikasi Produk (list)
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={specInput}
+                onChange={(e) => setSpecInput(e.target.value)}
+                className="form-input flex-1"
+                placeholder="Tambahkan spesifikasi"
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => addListItem('specs', specInput)}
+              >
+                Tambah
+              </button>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {form.specs.map((s, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between px-3 py-2 rounded-md bg-gray-50"
+                >
+                  <span className="text-sm text-gray-700">{s}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:underline"
+                    onClick={() => removeListItem('specs', idx)}
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Yang Termasuk */}
+          <div className="md:col-span-2">
+            <label className="form-label">
+              Yang Termasuk (list)
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={includeInput}
+                onChange={(e) => setIncludeInput(e.target.value)}
+                className="form-input flex-1"
+                placeholder="Tambahkan item termasuk"
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => addListItem('includes', includeInput)}
+              >
+                Tambah
+              </button>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {form.includes.map((s, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between px-3 py-2 rounded-md bg-gray-50"
+                >
+                  <span className="text-sm text-gray-700">{s}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:underline"
+                    onClick={() => removeListItem('includes', idx)}
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Keunggulan Produk */}
+          <div className="md:col-span-4">
+            <label className="form-label">
+              Keunggulan Produk (list)
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={featureInput}
+                onChange={(e) => setFeatureInput(e.target.value)}
+                className="form-input flex-1"
+                placeholder="Tambahkan keunggulan"
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => addListItem('features', featureInput)}
+              >
+                Tambah
+              </button>
+            </div>
+            <ul className="mt-2 grid md:grid-cols-2 gap-2">
+              {form.features.map((s, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between px-3 py-2 rounded-md bg-gray-50"
+                >
+                  <span className="text-sm text-gray-700">{s}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:underline"
+                    onClick={() => removeListItem('features', idx)}
+                  >
+                    Hapus
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="md:col-span-4 flex items-center justify-end gap-2 sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 border-t">
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={formModal.close}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+            >
+              {editing ? 'Simpan Perubahan' : 'Simpan'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-500">
+              <th className="px-4 py-3">Judul</th>
+              <th className="px-4 py-3">Harga</th>
+              <th className="px-4 py-3">Diskon (%)</th>
+              <th className="px-4 py-3">Stok</th>
+              <th className="px-4 py-3">Gambar</th>
+              <th className="px-4 py-3 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {items
+              .filter((i) => i.name.toLowerCase().includes(debouncedQuery.toLowerCase()))
+              .map((i) => (
+                <tr key={i.id} className="text-sm">
+                  <td className="px-4 py-3 font-medium text-gray-900">{i.name}</td>
+                  <td className="px-4 py-3 text-gray-600">Rp {i.price.toLocaleString('id-ID')}</td>
+                  <td className="px-4 py-3 text-gray-600">{i.discountPercent}%</td>
+                  <td className="px-4 py-3 text-gray-600">{i.stock}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {(i.mainImage ? 1 : 0) + i.images.length} foto
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openEdit(i)}
+                        className="px-3 py-1 rounded-md border hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => removeItem(i.id)}
+                        className="px-3 py-1 rounded-md bg-red-600 text-white hover:bg-red-700"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-end">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="mt-3 px-3 py-2 rounded-lg border border-gray-300 focus:border-primary-main focus:ring-primary-main text-sm"
+          placeholder="Cari kebutuhan..."
+        />
+      </div>
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Hapus Item?"
+        description="Tindakan ini tidak bisa dibatalkan."
+        onCancel={() => setConfirmId(null)}
+        onConfirm={() => {
+          if (confirmId !== null) {
+            setItems((prev) => prev.filter((i) => i.id !== confirmId))
+            toast.show('Item dihapus')
+            setConfirmId(null)
+          }
+        }}
+      />
+
+      {toast.message && (
+        <Toast message={toast.message} type={toast.type} onClose={toast.clear} />
+      )}
+    </div>
+  )
+}
