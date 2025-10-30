@@ -1,147 +1,125 @@
-// IkanPage component dengan Tailwind CSS
-
-interface Product {
-  id: number
-  name: string
-  price: string
-  img: string
-}
-
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAppDispatch, addItem } from '../redux'
 import type { CartItem } from '../types'
+import { listFish } from '../admin/services/api'
+
+type Fish = {
+  id: number
+  name: string
+  price: number
+  discountPercent?: number
+  mainImage?: string | null
+  images?: string[] | null
+  stock: number
+}
 
 export default function IkanPage() {
   const dispatch = useAppDispatch()
+  const [fishes, setFishes] = useState<Fish[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    listFish()
+      .then((data) => setFishes(data))
+      .catch((err) => setError(err?.message || 'Gagal memuat ikan'))
+      .finally(() => setLoading(false))
+  }, [])
 
   const onAdd = useCallback(
-    (p: Product) => {
-      const cartItem: Omit<CartItem, 'quantity'> = {
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        img: p.img,
+    (fish: Fish) => {
+      const img = fish.mainImage || (fish.images && fish.images[0]) || ''
+      const item: CartItem = {
+        id: fish.id,
+        name: fish.name,
+        price: `Rp ${fish.price.toLocaleString('id-ID')}`,
+        img,
         category: 'fish',
+        quantity: 1,
       }
-      dispatch(addItem(cartItem))
+      dispatch(addItem(item))
+      alert(`${fish.name} berhasil ditambahkan ke keranjang!`)
     },
     [dispatch]
   )
-  const fishes: Product[] = [
-    {
-      id: 1,
-      name: 'Betta Halfmoon Blue',
-      price: 'Rp 120.000',
-      img: '../img/betta-img/cupang (1).jpeg',
-    },
-    {
-      id: 2,
-      name: 'Betta Plakat Galaxy',
-      price: 'Rp 200.000',
-      img: '../img/betta-img/cupang (2).jpeg',
-    },
-    { id: 3, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (3).jpg' },
-    { id: 4, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (4).jpg' },
-    { id: 5, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (5).jpg' },
-    { id: 6, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (6).jpg' },
-    { id: 7, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (7).jpg' },
-    { id: 8, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (8).jpg' },
-    { id: 9, name: 'Betta Koi Nemo', price: 'Rp 180.000', img: '../img/betta-img/cupang (9).jpg' },
-    {
-      id: 10,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (10).jpg',
-    },
-    {
-      id: 11,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (11).jpg',
-    },
-    {
-      id: 12,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (12).jpg',
-    },
-    {
-      id: 13,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (13).jpg',
-    },
-    {
-      id: 14,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (14).jpg',
-    },
-    {
-      id: 15,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (15).jpg',
-    },
-    {
-      id: 16,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (16).jpg',
-    },
-    {
-      id: 17,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (17).jpg',
-    },
-    {
-      id: 18,
-      name: 'Betta Koi Nemo',
-      price: 'Rp 180.000',
-      img: '../img/betta-img/cupang (18).jpg',
-    },
-  ]
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <p className="text-gray-600">Memuat...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Gagal memuat ikan</h1>
+        <p className="text-gray-600">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <h1 className="text-3xl md:text-4xl font-bold text-primary-main mb-8">Ikan Cupang</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {fishes.map((fish) => (
-          <div
-            key={fish.id}
-            className="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden"
-          >
-            <div className="relative">
-              <img src={fish.img} alt={fish.name} className="w-full h-48 object-cover" />
-            </div>
-            <div className="p-6">
-              <Link to={`/ikan/${fish.id}`}>
-                <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-primary-main transition">
-                  {fish.name}
-                </h3>
-              </Link>
-              <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-primary-main">{fish.price}</span>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/ikan/${fish.id}`}
-                    className="px-3 py-2 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    Detail
-                  </Link>
-                  <button
-                    onClick={() => onAdd(fish)}
-                    className="px-3 py-2 rounded border border-gray-200 text-primary-main hover:bg-primary-main hover:text-white transition"
-                  >
-                    Tambah
-                  </button>
-                </div>
+      <div className="text-center mb-12">
+        <h1 className="text-3xl font-bold text-gray-900">Katalog Ikan Cupang</h1>
+        <p className="text-gray-600 mt-2">Jelajahi koleksi ikan cupang pilihan</p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {fishes.map((fish) => {
+          const img = fish.mainImage || (fish.images && fish.images[0]) || ''
+          const hasDiscount = typeof fish.discountPercent === 'number' && fish.discountPercent > 0
+          const original = hasDiscount
+            ? Math.round(fish.price / (1 - (fish.discountPercent || 0) / 100))
+            : null
+          return (
+            <div key={fish.id} className="card p-4">
+              <img
+                src={img}
+                alt={fish.name}
+                className="w-full h-48 object-cover rounded-lg mb-4"
+              />
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-gray-900">{fish.name}</h4>
+                <span
+                  className={`px-2 py-1 text-xs rounded-full ${
+                    fish.stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {fish.stock > 0 ? `Stok: ${fish.stock}` : 'Stok Habis'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <p className="text-primary-main font-semibold">
+                  Rp {fish.price.toLocaleString('id-ID')}
+                </p>
+                {hasDiscount && original && (
+                  <span className="text-sm text-gray-500 line-through">
+                    Rp {original.toLocaleString('id-ID')}
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Link
+                  to={`/ikan/${fish.id}`}
+                  className="px-6 py-3 border border-primary-main text-primary-main rounded-lg hover:bg-primary-main hover:text-white transition-colors"
+                >
+                  Lihat Detail
+                </Link>
+                <button
+                  onClick={() => onAdd(fish)}
+                  disabled={!fish.stock || fish.stock <= 0}
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Tambah ke Keranjang
+                </button>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

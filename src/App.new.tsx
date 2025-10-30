@@ -6,7 +6,7 @@ import HomePage from './pages/HomePage'
 import ProfilPage from './pages/ProfilPage'
 import ArtikelPage from './pages/ArtikelPage'
 import KebutuhanPage from './pages/KebutuhanPage'
-import IkanPage from './pages/IkanPage'
+import IkanPage from './pages/ikanpage'
 
 export default function App() {
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 
-export default function withPerformance<TProps>(
+export default function withPerformance<TProps extends object>(
   Component: React.ComponentType<TProps>,
   label?: string
 ): React.ComponentType<TProps> {

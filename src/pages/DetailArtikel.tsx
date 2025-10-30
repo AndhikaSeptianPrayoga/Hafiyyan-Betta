@@ -1,46 +1,46 @@
 // DetailArtikel component dengan Tailwind CSS
 import { useParams, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { getArticle } from '../admin/services/api'
 
-// Mock data artikel
-const artikelData = {
-  1: {
-    id: 1,
-    title: 'Panduan Lengkap Perawatan Ikan Cupang untuk Pemula',
-    author: 'Hafiyyan',
-    date: '15 Desember 2024',
-    readTime: '8 menit',
-    category: 'Perawatan',
-    image: '/img/betta-img/cupang (5).jpg',
-    content: `
-      <p class="mb-4">Memelihara ikan cupang bisa menjadi hobi yang sangat menyenangkan dan menenangkan. Namun, untuk pemula, ada beberapa hal penting yang perlu dipahami agar ikan cupang Anda bisa hidup sehat dan bahagia.</p>
-      
-      <h3 class="text-xl font-bold text-primary-main mb-3 mt-6">1. Persiapan Akuarium</h3>
-      <p class="mb-4">Ukuran akuarium yang ideal untuk ikan cupang adalah minimal 20 liter. Akuarium yang terlalu kecil akan membuat ikan stres dan mudah sakit. Pastikan akuarium memiliki tutup untuk mencegah ikan melompat keluar.</p>
-      
-      <h3 class="text-xl font-bold text-primary-main mb-3 mt-6">2. Parameter Air</h3>
-      <ul class="list-disc pl-5 mb-4 space-y-2">
-        <li>Suhu air: 24-28°C</li>
-        <li>pH: 6.5-7.5</li>
-        <li>Ammonia: 0 ppm</li>
-        <li>Nitrit: 0 ppm</li>
-        <li>Nitrat: < 20 ppm</li>
-      </ul>
-      
-      <h3 class="text-xl font-bold text-primary-main mb-3 mt-6">3. Pakan yang Tepat</h3>
-      <p class="mb-4">Berikan pakan berkualitas tinggi 2-3 kali sehari dalam jumlah yang bisa dihabiskan dalam 2-3 menit. Variasikan pakan antara pelet, cacing darah, dan artemia untuk nutrisi yang seimbang.</p>
-      
-      <h3 class="text-xl font-bold text-primary-main mb-3 mt-6">4. Perawatan Rutin</h3>
-      <p class="mb-4">Lakukan penggantian air 25-30% setiap minggu. Bersihkan filter dan siphon substrat secara teratur. Pantau kesehatan ikan dan segera isolasi jika terlihat sakit.</p>
-    `,
-    tags: ['Perawatan', 'Pemula', 'Akuarium', 'Pakan'],
-  },
+type Article = {
+  id: number
+  title: string
+  author: string | null
+  date: string
+  image: string | null
+  content: string | null
+  tags?: string[]
 }
 
 export default function DetailArtikel() {
   const { id } = useParams<{ id: string }>()
-  const artikel = artikelData[parseInt(id || '1') as keyof typeof artikelData]
+  const [artikel, setArtikel] = useState<Article | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  if (!artikel) {
+  useEffect(() => {
+    const articleId = Number(id)
+    if (!articleId) {
+      setError('Artikel tidak ditemukan')
+      setLoading(false)
+      return
+    }
+    getArticle(articleId)
+      .then((data) => setArtikel(data))
+      .catch((e) => setError(e.message || 'Artikel tidak ditemukan'))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <p className="text-gray-600">Memuat...</p>
+      </div>
+    )
+  }
+
+  if (error || !artikel) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Artikel Tidak Ditemukan</h1>
@@ -69,27 +69,29 @@ export default function DetailArtikel() {
       {/* Hero Section */}
       <div className="mb-12">
         <div className="aspect-video rounded-2xl overflow-hidden mb-6">
-          <img src={artikel.image} alt={artikel.title} className="w-full h-full object-cover" />
+          {artikel.image && (
+            <img src={artikel.image} alt={artikel.title} className="w-full h-full object-cover" />
+          )}
         </div>
 
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-4">
             <span className="px-3 py-1 bg-primary-main text-white text-sm rounded-full">
-              {artikel.category}
+              Artikel
             </span>
-            <span className="text-gray-600">{artikel.date}</span>
+            <span className="text-gray-600">{new Date(artikel.date).toLocaleDateString('id-ID')}</span>
             <span className="text-gray-600">•</span>
-            <span className="text-gray-600">{artikel.readTime}</span>
+            <span className="text-gray-600">{artikel.author || 'Admin'}</span>
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{artikel.title}</h1>
 
           <div className="flex items-center gap-4 mb-6">
             <div className="w-10 h-10 bg-primary-main rounded-full flex items-center justify-center text-white font-bold">
-              {artikel.author.charAt(0)}
+              {(artikel.author || 'A').charAt(0)}
             </div>
             <div>
-              <p className="font-semibold">{artikel.author}</p>
+              <p className="font-semibold">{artikel.author || 'Admin'}</p>
               <p className="text-sm text-gray-600">Penulis</p>
             </div>
           </div>
@@ -98,16 +100,18 @@ export default function DetailArtikel() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto">
-        <div
-          className="prose prose-lg max-w-none"
-          dangerouslySetInnerHTML={{ __html: artikel.content }}
-        />
+        {artikel.content && (
+          <div
+            className="prose prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: artikel.content }}
+          />
+        )}
 
         {/* Tags */}
         <div className="mt-12 pt-8 border-t">
           <h4 className="text-lg font-semibold mb-4">Tags</h4>
           <div className="flex flex-wrap gap-2">
-            {artikel.tags.map((tag: string, index: number) => (
+            {(artikel.tags || []).map((tag: string, index: number) => (
               <span
                 key={index}
                 className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full hover:bg-primary-main hover:text-white transition-colors cursor-pointer"

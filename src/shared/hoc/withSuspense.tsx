@@ -1,6 +1,6 @@
 import { Suspense, type ComponentType, type ReactNode } from 'react'
 
-export default function withSuspense<TProps>(
+export default function withSuspense<TProps extends object>(
   Component: ComponentType<TProps>,
   fallback?: ReactNode
 ): ComponentType<TProps> {

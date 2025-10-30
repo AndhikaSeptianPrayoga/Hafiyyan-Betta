@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import useModal from '../../hooks/useModal'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import useToast from '../../hooks/useToast'
+import { listFish, createFish, updateFish, deleteFish } from '../services/api'
 
 type Fish = {
   id: number
@@ -28,53 +29,7 @@ type Fish = {
 }
 
 export default function IkanAdminPage() {
-  const initialData: Fish[] = useMemo(
-    () => [
-      {
-        id: 1,
-        name: 'Halfmoon Red',
-        price: 200000,
-        discountPercent: 25,
-        variety: 'Halfmoon',
-        description: 'Ikan cupang halfmoon premium dengan sirip lebar dan simetris.',
-        typeText: 'Halfmoon',
-        sizeCm: '5-6 cm',
-        color: 'Merah Metalik',
-        gender: 'Jantan',
-        condition: 'Sehat & Aktif',
-        age: '3-4 bulan',
-        origin: 'Breeding Lokal',
-        stock: 5,
-        advantages: ['Sirip lebar dan simetris', 'Warna metalik yang mencolok'],
-        careGuide: ['Ganti air 25% setiap minggu', 'Berikan pakan 2x sehari'],
-        mainImage: '/img/betta-img/cupang (1).jpeg',
-        images: ['/img/betta-img/cupang (1).jpeg', '/img/betta-img/cupang (2).jpeg'],
-      },
-      {
-        id: 2,
-        name: 'Plakat Marble',
-        price: 150000,
-        discountPercent: 0,
-        variety: 'Plakat',
-        description: 'Cupang plakat dengan corak marble unik.',
-        typeText: 'Plakat',
-        sizeCm: '4-5 cm',
-        color: 'Marble',
-        gender: 'Jantan',
-        condition: 'Sehat',
-        age: '3 bulan',
-        origin: 'Breeding Lokal',
-        stock: 3,
-        advantages: ['Kondisi fisik prima'],
-        careGuide: ['Suhu air 24-28°C'],
-        mainImage: '/img/betta-img/cupang (3).jpg',
-        images: ['/img/betta-img/cupang (3).jpg', '/img/betta-img/cupang (4).jpg'],
-      },
-    ],
-    []
-  )
-
-  const [items, setItems] = useState<Fish[]>(initialData)
+  const [items, setItems] = useState<Fish[]>([])
   const formModal = useModal()
   const [editing, setEditing] = useState<Fish | null>(null)
   const [form, setForm] = useState<Omit<Fish, 'id'>>({
@@ -102,6 +57,13 @@ export default function IkanAdminPage() {
   const [advInput, setAdvInput] = useState('')
   const [careInput, setCareInput] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    listFish()
+      .then((data) => setItems(Array.isArray(data) ? data : []))
+      .catch(() => toast.show('Gagal memuat ikan', { type: 'error' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const openCreate = () => {
     setEditing(null)
@@ -157,12 +119,19 @@ export default function IkanAdminPage() {
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
     if (editing) {
-      setItems((prev) => prev.map((i) => (i.id === editing.id ? { ...editing, ...form } : i)))
-      toast.show('Perubahan disimpan')
+      updateFish(editing.id, { ...form })
+        .then((updated) => {
+          setItems((prev) => prev.map((i) => (i.id === editing.id ? updated : i)))
+          toast.show('Perubahan disimpan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menyimpan perubahan', { type: 'error' }))
     } else {
-      const nextId = items.length ? Math.max(...items.map((i) => i.id)) + 1 : 1
-      setItems((prev) => [{ id: nextId, ...form }, ...prev])
-      toast.show('Ikan baru ditambahkan')
+      createFish({ ...form })
+        .then((created) => {
+          setItems((prev) => [created, ...prev])
+          toast.show('Ikan baru ditambahkan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menambahkan ikan', { type: 'error' }))
     }
     formModal.close()
   }
@@ -621,8 +590,12 @@ export default function IkanAdminPage() {
         onCancel={() => setConfirmId(null)}
         onConfirm={() => {
           if (confirmId !== null) {
-            setItems((prev) => prev.filter((i) => i.id !== confirmId))
-            toast.show('Ikan dihapus')
+            deleteFish(confirmId)
+              .then(() => {
+                setItems((prev) => prev.filter((i) => i.id !== confirmId))
+                toast.show('Ikan dihapus')
+              })
+              .catch((err) => toast.show(err?.message || 'Gagal menghapus ikan', { type: 'error' }))
             setConfirmId(null)
           }
         }}

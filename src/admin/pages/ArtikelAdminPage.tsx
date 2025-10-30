@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import useModal from '../../hooks/useModal'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import useToast from '../../hooks/useToast'
+import { listArticles, createArticle, updateArticle, deleteArticle } from '../services/api'
 
 type Article = {
   id: number
@@ -18,33 +19,7 @@ type Article = {
 }
 
 export default function ArtikelAdminPage() {
-  const initialData: Article[] = useMemo(
-    () => [
-      {
-        id: 1,
-        title: 'Panduan Dasar Merawat Cupang',
-        excerpt: 'Air, pakan, dan setting tank untuk pemula.',
-        date: '2025-01-01',
-        image: '/img/betta-img/cupang (6).jpg',
-        author: 'Admin',
-        content: '<p>Ringkasan perawatan dasar untuk pemula.</p>',
-        tags: ['perawatan'],
-      },
-      {
-        id: 2,
-        title: 'Mengenal Varietas Betta',
-        excerpt: 'Halfmoon, Plakat, Giant, dan lain-lain.',
-        date: '2025-01-05',
-        image: '/img/betta-img/cupang (7).jpg',
-        author: 'Admin',
-        content: '<p>Pengantar berbagai varietas betta populer.</p>',
-        tags: ['varietas'],
-      },
-    ],
-    []
-  )
-
-  const [articles, setArticles] = useState<Article[]>(initialData)
+  const [articles, setArticles] = useState<Article[]>([])
   const formModal = useModal()
   const [editing, setEditing] = useState<Article | null>(null)
   const [form, setForm] = useState<Omit<Article, 'id'>>({
@@ -62,6 +37,13 @@ export default function ArtikelAdminPage() {
   const [tagInput, setTagInput] = useState('')
   const editorRef = useRef<HTMLDivElement>(null)
   const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    listArticles()
+      .then((data) => setArticles(Array.isArray(data) ? data : []))
+      .catch(() => toast.show('Gagal memuat artikel', { type: 'error' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const openCreate = () => {
     setEditing(null)
@@ -111,16 +93,19 @@ export default function ArtikelAdminPage() {
     e.preventDefault()
     const currentContent = editorRef.current?.innerHTML || form.content
     if (editing) {
-      setArticles((prev) =>
-        prev.map((a) =>
-          a.id === editing.id ? { ...editing, ...form, content: currentContent } : a
-        )
-      )
-      toast.show('Perubahan artikel disimpan')
+      updateArticle(editing.id, { ...form, content: currentContent })
+        .then((updated) => {
+          setArticles((prev) => prev.map((a) => (a.id === editing.id ? updated : a)))
+          toast.show('Perubahan artikel disimpan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menyimpan perubahan', { type: 'error' }))
     } else {
-      const nextId = articles.length ? Math.max(...articles.map((a) => a.id)) + 1 : 1
-      setArticles((prev) => [{ id: nextId, ...form, content: currentContent }, ...prev])
-      toast.show('Artikel baru ditambahkan')
+      createArticle({ ...form, content: currentContent })
+        .then((created) => {
+          setArticles((prev) => [created, ...prev])
+          toast.show('Artikel baru ditambahkan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menambahkan artikel', { type: 'error' }))
     }
     formModal.close()
   }
@@ -398,8 +383,12 @@ export default function ArtikelAdminPage() {
         onCancel={() => setConfirmId(null)}
         onConfirm={() => {
           if (confirmId !== null) {
-            setArticles((prev) => prev.filter((a) => a.id !== confirmId))
-            toast.show('Artikel dihapus')
+            deleteArticle(confirmId)
+              .then(() => {
+                setArticles((prev) => prev.filter((a) => a.id !== confirmId))
+                toast.show('Artikel dihapus')
+              })
+              .catch((err) => toast.show(err?.message || 'Gagal menghapus artikel', { type: 'error' }))
             setConfirmId(null)
           }
         }}

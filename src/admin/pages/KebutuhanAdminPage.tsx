@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useState, useEffect } from 'react'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
 import useModal from '../../hooks/useModal'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import useToast from '../../hooks/useToast'
+import { listNeeds, createNeed, updateNeed, deleteNeed } from '../services/api'
 
 type Need = {
   id: number
@@ -21,39 +22,7 @@ type Need = {
 }
 
 export default function KebutuhanAdminPage() {
-  const initialData: Need[] = useMemo(
-    () => [
-      {
-        id: 1,
-        name: 'Daun Ketapang Premium',
-        description: 'Daun ketapang pilihan untuk menjaga kualitas air dan kesehatan ikan cupang.',
-        price: 8000,
-        discountPercent: 0,
-        specs: ['Berat 50g', 'Dikeringkan alami', 'Daun utuh pilihan'],
-        includes: ['10 lembar daun ketapang'],
-        features: ['Meningkatkan kualitas air', 'Membantu pemulihan ikan'],
-        stock: 25,
-        mainImage: '/img/kebutuhan-img/2.png',
-        images: ['/img/kebutuhan-img/2.png'],
-      },
-      {
-        id: 2,
-        name: 'Garam Ikan 100gr',
-        description: 'Garam khusus ikan untuk perawatan harian dan karantina.',
-        price: 10000,
-        discountPercent: 0,
-        specs: ['Berat 100g', 'Kemasan ziplock'],
-        includes: ['1 pouch garam 100g'],
-        features: ['Meningkatkan daya tahan', 'Membantu proses penyembuhan'],
-        stock: 40,
-        mainImage: '/img/kebutuhan-img/1.png',
-        images: ['/img/kebutuhan-img/1.png'],
-      },
-    ],
-    []
-  )
-
-  const [items, setItems] = useState<Need[]>(initialData)
+  const [items, setItems] = useState<Need[]>([])
   const formModal = useModal()
   const [editing, setEditing] = useState<Need | null>(null)
   const [form, setForm] = useState<Omit<Need, 'id'>>({
@@ -75,6 +44,13 @@ export default function KebutuhanAdminPage() {
   const toast = useToast()
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const debouncedQuery = useDebouncedValue(query, 300)
+
+  useEffect(() => {
+    listNeeds()
+      .then((data) => setItems(Array.isArray(data) ? data : []))
+      .catch(() => toast.show('Gagal memuat kebutuhan', { type: 'error' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const openCreate = () => {
     setEditing(null)
@@ -118,12 +94,19 @@ export default function KebutuhanAdminPage() {
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
     if (editing) {
-      setItems((prev) => prev.map((i) => (i.id === editing.id ? { ...editing, ...form } : i)))
-      toast.show('Perubahan disimpan')
+      updateNeed(editing.id, { ...form })
+        .then((updated) => {
+          setItems((prev) => prev.map((i) => (i.id === editing.id ? updated : i)))
+          toast.show('Perubahan disimpan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menyimpan perubahan', { type: 'error' }))
     } else {
-      const nextId = items.length ? Math.max(...items.map((i) => i.id)) + 1 : 1
-      setItems((prev) => [{ id: nextId, ...form }, ...prev])
-      toast.show('Item baru ditambahkan')
+      createNeed({ ...form })
+        .then((created) => {
+          setItems((prev) => [created, ...prev])
+          toast.show('Item baru ditambahkan')
+        })
+        .catch((err) => toast.show(err?.message || 'Gagal menambahkan item', { type: 'error' }))
     }
     formModal.close()
   }
@@ -513,8 +496,12 @@ export default function KebutuhanAdminPage() {
         onCancel={() => setConfirmId(null)}
         onConfirm={() => {
           if (confirmId !== null) {
-            setItems((prev) => prev.filter((i) => i.id !== confirmId))
-            toast.show('Item dihapus')
+            deleteNeed(confirmId)
+              .then(() => {
+                setItems((prev) => prev.filter((i) => i.id !== confirmId))
+                toast.show('Item dihapus')
+              })
+              .catch((err) => toast.show(err?.message || 'Gagal menghapus item', { type: 'error' }))
             setConfirmId(null)
           }
         }}
