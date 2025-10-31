@@ -71,10 +71,14 @@ export default function DetailKebutuhan() {
 
   const handleAddToCartClick = () => {
     const img = kebutuhan.mainImage || (kebutuhan.images && kebutuhan.images[0]) || ''
+    const hasDiscount = typeof kebutuhan.discountPercent === 'number' && kebutuhan.discountPercent > 0
+    const discounted = hasDiscount
+      ? Math.round(kebutuhan.price * (1 - (kebutuhan.discountPercent || 0) / 100))
+      : kebutuhan.price
     const cartItem = {
       id: kebutuhan.id,
       name: kebutuhan.name,
-      price: `Rp ${kebutuhan.price.toLocaleString('id-ID')}`,
+      price: `Rp ${discounted.toLocaleString('id-ID')}`,
       img,
       category: 'supplies' as const,
     }
@@ -148,14 +152,24 @@ export default function DetailKebutuhan() {
           {/* Info sederhana tanpa rating */}
 
           <div className="flex items-center gap-4 mb-6">
-            <span className="text-3xl font-bold text-primary-main">
-              Rp {kebutuhan.price.toLocaleString('id-ID')}
-            </span>
-            {typeof kebutuhan.discountPercent === 'number' && kebutuhan.discountPercent > 0 && (
-              <span className="text-xl text-gray-500 line-through">
-                Rp {Math.round(kebutuhan.price / (1 - kebutuhan.discountPercent / 100)).toLocaleString('id-ID')}
-              </span>
-            )}
+            {(() => {
+              const hasDiscount = typeof kebutuhan.discountPercent === 'number' && kebutuhan.discountPercent > 0
+              const discounted = hasDiscount
+                ? Math.round(kebutuhan.price * (1 - (kebutuhan.discountPercent || 0) / 100))
+                : kebutuhan.price
+              return (
+                <>
+                  <span className="text-3xl font-bold text-primary-main">
+                    Rp {discounted.toLocaleString('id-ID')}
+                  </span>
+                  {hasDiscount && (
+                    <span className="text-xl text-gray-500 line-through">
+                      Rp {kebutuhan.price.toLocaleString('id-ID')}
+                    </span>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           <p className="text-gray-700 mb-6">{kebutuhan.description}</p>

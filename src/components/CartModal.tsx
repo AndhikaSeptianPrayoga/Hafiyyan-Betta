@@ -7,9 +7,10 @@ interface CartModalProps {
   cart: CartItem[]
   onClose: () => void
   onRemoveItem: (id: number) => void
+  onCheckout?: () => void
 }
 
-export default function CartModal({ isOpen, cart, onClose, onRemoveItem }: CartModalProps) {
+export default function CartModal({ isOpen, cart, onClose, onRemoveItem, onCheckout }: CartModalProps) {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
@@ -138,7 +139,10 @@ export default function CartModal({ isOpen, cart, onClose, onRemoveItem }: CartM
                   {cart.reduce((total, item) => total + item.quantity, 0)}
                 </span>
               </div>
-              <button className="w-full bg-primary-main text-white py-2 px-4 rounded-md hover:bg-primary-dark transition-colors font-medium">
+              <button
+                className="w-full bg-primary-main text-white py-2 px-4 rounded-md hover:bg-primary-dark transition-colors font-medium"
+                onClick={onCheckout}
+              >
                 Lanjut ke Checkout
               </button>
             </div>

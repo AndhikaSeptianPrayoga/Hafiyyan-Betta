@@ -6,6 +6,7 @@ import useModal from '../../hooks/useModal'
 import useDebouncedValue from '../../hooks/useDebouncedValue'
 import useToast from '../../hooks/useToast'
 import { listNeeds, createNeed, updateNeed, deleteNeed } from '../services/api'
+import RupiahInput from '../components/RupiahInput'
 
 type Need = {
   id: number
@@ -21,11 +22,25 @@ type Need = {
   images: string[]
 }
 
+// Form internal type to allow empty string while typing for numeric fields
+type NeedForm = {
+  name: string
+  description: string
+  price: number
+  discountPercent: number | ''
+  specs: string[]
+  includes: string[]
+  features: string[]
+  stock: number | ''
+  mainImage: string
+  images: string[]
+}
+
 export default function KebutuhanAdminPage() {
   const [items, setItems] = useState<Need[]>([])
   const formModal = useModal()
   const [editing, setEditing] = useState<Need | null>(null)
-  const [form, setForm] = useState<Omit<Need, 'id'>>({
+  const [form, setForm] = useState<NeedForm>({
     name: '',
     description: '',
     price: 0,
@@ -93,15 +108,24 @@ export default function KebutuhanAdminPage() {
   const removeItem = (id: number) => setConfirmId(id)
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
+    const discount = typeof form.discountPercent === 'number' ? form.discountPercent : 0
+    // Backend diinterpretasikan menyimpan harga akhir; kirim harga setelah diskon
+    const finalPrice = Math.round(form.price * (1 - discount / 100))
+    const payload = {
+      ...form,
+      price: finalPrice,
+      discountPercent: discount,
+      stock: typeof form.stock === 'number' ? form.stock : 0,
+    }
     if (editing) {
-      updateNeed(editing.id, { ...form })
+      updateNeed(editing.id, payload)
         .then((updated) => {
           setItems((prev) => prev.map((i) => (i.id === editing.id ? updated : i)))
           toast.show('Perubahan disimpan')
         })
         .catch((err) => toast.show(err?.message || 'Gagal menyimpan perubahan', { type: 'error' }))
     } else {
-      createNeed({ ...form })
+      createNeed(payload)
         .then((created) => {
           setItems((prev) => [created, ...prev])
           toast.show('Item baru ditambahkan')
@@ -185,11 +209,10 @@ export default function KebutuhanAdminPage() {
           </div>
           <div className="md:col-span-1">
             <label className="form-label">Harga (Rp)</label>
-            <input
-              type="number"
+            <RupiahInput
               value={form.price}
-              onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-              className="form-input"
+              onChange={(v) => setForm((f) => ({ ...f, price: v }))}
+              placeholder="Masukkan harga, otomatis pakai titik"
             />
           </div>
 
@@ -199,15 +222,62 @@ export default function KebutuhanAdminPage() {
               type="number"
               min={0}
               max={100}
-              value={form.discountPercent}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  discountPercent: Math.max(0, Math.min(100, Number(e.target.value))),
-                }))
-              }
-              className="form-input"
+              value={typeof form.discountPercent === 'string' ? '' : form.discountPercent}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === '') {
+                  setForm((f) => ({ ...f, discountPercent: '' as '' }))
+                } else {
+                  const num = Math.max(0, Math.min(100, Number(v)))
+                  setForm((f) => ({ ...f, discountPercent: num }))
+                }
+              }}
+              className="form-input no-spin"
               placeholder="0 - 100"
+              onWheel={(e) => {
+                e.preventDefault()
+                ;(e.currentTarget as HTMLInputElement).blur()
+              }}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onKeyDown={(e) => {
+                const allowedKeys = [
+                  'Backspace',
+                  'Tab',
+                  'Enter',
+                  'Escape',
+                  'Delete',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'Home',
+                  'End',
+                ]
+                const isCtrlCombo = e.ctrlKey || e.metaKey
+                const isCtrlAllowed = ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
+                const isNumberKey = /[0-9]/.test(e.key)
+                const isNumpadKey = e.code?.startsWith('Numpad') && /[0-9]/.test(e.key)
+                if (
+                  allowedKeys.includes(e.key) ||
+                  (isCtrlCombo && isCtrlAllowed) ||
+                  isNumberKey ||
+                  isNumpadKey
+                ) {
+                  return
+                }
+                if (
+                  e.key === 'ArrowUp' ||
+                  e.key === 'ArrowDown' ||
+                  e.key === '.' ||
+                  e.key === ',' ||
+                  e.key === '-' ||
+                  e.key === '+' ||
+                  e.key.toLowerCase() === 'e'
+                ) {
+                  e.preventDefault()
+                } else {
+                  e.preventDefault()
+                }
+              }}
             />
           </div>
           <div className="md:col-span-2">
@@ -215,12 +285,62 @@ export default function KebutuhanAdminPage() {
             <input
               type="number"
               min={0}
-              value={form.stock}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))
-              }
-              className="form-input"
+              value={typeof form.stock === 'string' ? '' : form.stock}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === '') {
+                  setForm((f) => ({ ...f, stock: '' as '' }))
+                } else {
+                  const num = Math.max(0, Number(v))
+                  setForm((f) => ({ ...f, stock: num }))
+                }
+              }}
+              className="form-input no-spin"
               placeholder="Jumlah stok tersedia"
+              onWheel={(e) => {
+                e.preventDefault()
+                ;(e.currentTarget as HTMLInputElement).blur()
+              }}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              onKeyDown={(e) => {
+                const allowedKeys = [
+                  'Backspace',
+                  'Tab',
+                  'Enter',
+                  'Escape',
+                  'Delete',
+                  'ArrowLeft',
+                  'ArrowRight',
+                  'Home',
+                  'End',
+                ]
+                const isCtrlCombo = e.ctrlKey || e.metaKey
+                const isCtrlAllowed = ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
+                const isNumberKey = /[0-9]/.test(e.key)
+                const isNumpadKey = e.code?.startsWith('Numpad') && /[0-9]/.test(e.key)
+                if (
+                  allowedKeys.includes(e.key) ||
+                  (isCtrlCombo && isCtrlAllowed) ||
+                  isNumberKey ||
+                  isNumpadKey
+                ) {
+                  return
+                }
+                if (
+                  e.key === 'ArrowUp' ||
+                  e.key === 'ArrowDown' ||
+                  e.key === '.' ||
+                  e.key === ',' ||
+                  e.key === '-' ||
+                  e.key === '+' ||
+                  e.key.toLowerCase() === 'e'
+                ) {
+                  e.preventDefault()
+                } else {
+                  e.preventDefault()
+                }
+              }}
             />
           </div>
 

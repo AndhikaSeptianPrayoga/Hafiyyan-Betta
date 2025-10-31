@@ -14,8 +14,14 @@ const initialState: CartState = {
   totalItems: 0,
 }
 
+const parseRupiah = (v: string): number => {
+  // Ambil hanya digit dari string seperti "Rp 200.000" -> 200000
+  const digits = v.replace(/[^0-9]/g, '')
+  return digits ? Number(digits) : 0
+}
+
 const calculateTotals = (items: CartItem[]): { total: number; totalItems: number } => {
-  const total = items.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0)
+  const total = items.reduce((sum, item) => sum + parseRupiah(item.price) * item.quantity, 0)
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   return { total, totalItems }
 }

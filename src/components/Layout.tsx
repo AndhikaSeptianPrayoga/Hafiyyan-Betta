@@ -11,11 +11,14 @@ import {
 import Navbar from './Navbar'
 import Footer from './Footer'
 import CartModal from './CartModal'
+import { getAuth } from '../services/auth'
+import { useNavigate } from 'react-router-dom'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch()
   const cartItems = useAppSelector(selectCartItems)
   const cartOpen = useAppSelector(selectCartOpen)
+  const navigate = useNavigate()
 
   const handleToggleCart = () => {
     dispatch(toggleCart())
@@ -23,6 +26,15 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const handleRemoveFromCart = (id: number) => {
     dispatch(removeItem(id))
+  }
+
+  const handleCheckoutGuard = () => {
+    const { token } = getAuth()
+    if (!token) {
+      navigate('/login', { state: { redirectTo: '/checkout' } })
+    } else {
+      navigate('/checkout')
+    }
   }
 
   useEffect(() => {
@@ -48,6 +60,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         cart={cartItems}
         onClose={handleToggleCart}
         onRemoveItem={handleRemoveFromCart}
+        onCheckout={handleCheckoutGuard}
       />
     </div>
   )

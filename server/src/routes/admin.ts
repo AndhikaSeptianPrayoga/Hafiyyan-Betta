@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { query } from '../db'
 import auth, { AuthPayload } from '../middleware/auth'
+import requireAdmin from '../middleware/requireAdmin'
+import bcrypt from 'bcryptjs'
 
 const router = Router()
 
@@ -86,7 +88,7 @@ router.get('/me', auth, async (req: Request & { user?: AuthPayload }, res: Respo
 })
 
 // List admins (protected)
-router.get('/users', auth, async (req: Request, res: Response) => {
+router.get('/users', auth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { rows } = await query(
       'SELECT id,name,email,role,created_at,updated_at FROM admins ORDER BY id DESC'
@@ -99,7 +101,7 @@ router.get('/users', auth, async (req: Request, res: Response) => {
 })
 
 // Get admin by id
-router.get('/users/:id', auth, async (req: Request, res: Response) => {
+router.get('/users/:id', auth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { rows } = await query(
       'SELECT id,name,email,role,created_at,updated_at FROM admins WHERE id=$1',
@@ -114,7 +116,7 @@ router.get('/users/:id', auth, async (req: Request, res: Response) => {
 })
 
 // Update admin
-router.put('/users/:id', auth, async (req: Request, res: Response) => {
+router.put('/users/:id', auth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { name, email, password, role } = (req.body || {}) as {
       name?: string
@@ -159,7 +161,7 @@ router.put('/users/:id', auth, async (req: Request, res: Response) => {
 })
 
 // Delete admin
-router.delete('/users/:id', auth, async (req: Request, res: Response) => {
+router.delete('/users/:id', auth, requireAdmin, async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id)
     const result = await query('DELETE FROM admins WHERE id=$1', [id])
@@ -172,3 +174,115 @@ router.delete('/users/:id', auth, async (req: Request, res: Response) => {
 })
 
 export default router
+
+// ================= Customers Management (Admin only) =================
+// List customers
+router.get('/customers', auth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { rows } = await query(
+      'SELECT id,name,email,role,created_at,updated_at FROM customers ORDER BY id DESC'
+    )
+    return res.json(rows)
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Get customer by id
+router.get('/customers/:id', auth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id)
+    const { rows } = await query(
+      'SELECT id,name,email,role,created_at,updated_at FROM customers WHERE id=$1',
+      [id]
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Not found' })
+    return res.json(rows[0])
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Create customer
+router.post('/customers', auth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { name, email, password } = (req.body || {}) as {
+      name?: string
+      email?: string
+      password?: string
+    }
+    if (!name || !email || !password)
+      return res.status(400).json({ error: 'Missing fields' })
+    const exists = await query('SELECT id FROM customers WHERE email=$1', [email])
+    if (exists.rowCount) return res.status(409).json({ error: 'Email already used' })
+    const hash = await bcrypt.hash(String(password), 10)
+    const { rows } = await query(
+      'INSERT INTO customers(name,email,password_hash,role) VALUES($1,$2,$3,$4) RETURNING id,name,email,role,created_at,updated_at',
+      [name, email, hash, 'customer']
+    )
+    return res.status(201).json(rows[0])
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Update customer
+router.put('/customers/:id', auth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id)
+    const { name, email, password, role } = (req.body || {}) as {
+      name?: string
+      email?: string
+      password?: string
+      role?: string
+    }
+    const current = await query('SELECT * FROM customers WHERE id=$1', [id])
+    if (!current.rowCount) return res.status(404).json({ error: 'Not found' })
+
+    const sets: string[] = []
+    const values: any[] = []
+    let idx = 1
+    if (name) {
+      sets.push(`name=$${idx++}`)
+      values.push(name)
+    }
+    if (email) {
+      sets.push(`email=$${idx++}`)
+      values.push(email)
+    }
+    if (role) {
+      sets.push(`role=$${idx++}`)
+      values.push(role)
+    }
+    if (password) {
+      const hash = await bcrypt.hash(String(password), 10)
+      sets.push(`password_hash=$${idx++}`)
+      values.push(hash)
+    }
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' })
+
+    values.push(id)
+    const sql = `UPDATE customers SET ${sets.join(', ')} WHERE id=$${idx} RETURNING id,name,email,role,created_at,updated_at`
+    const { rows } = await query(sql, values)
+    return res.json(rows[0])
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Delete customer
+router.delete('/customers/:id', auth, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id)
+    const result = await query('DELETE FROM customers WHERE id=$1', [id])
+    if (!result.rowCount) return res.status(404).json({ error: 'Not found' })
+    return res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    return res.status(500).json({ error: 'Server error' })
+  }
+})

@@ -69,10 +69,12 @@ export default function DetailIkan() {
 
   const handleAddToCartClick = () => {
     const img = ikan.mainImage || (ikan.images && ikan.images[0]) || ''
+    // Interpretasi baru: backend menyimpan harga final setelah diskon
+    const finalPrice = ikan.price
     const cartItem = {
       id: ikan.id,
       name: ikan.name,
-      price: `Rp ${ikan.price.toLocaleString('id-ID')}`,
+      price: `Rp ${finalPrice.toLocaleString('id-ID')}`,
       img,
       category: 'fish' as const,
     }
@@ -145,14 +147,22 @@ export default function DetailIkan() {
           {/* Info sederhana tanpa rating */}
 
           <div className="flex items-center gap-4 mb-6">
-            <span className="text-3xl font-bold text-primary-main">
-              Rp {ikan.price.toLocaleString('id-ID')}
-            </span>
-            {typeof ikan.discountPercent === 'number' && ikan.discountPercent > 0 && (
-              <span className="text-xl text-gray-500 line-through">
-                Rp {Math.round(ikan.price / (1 - ikan.discountPercent / 100)).toLocaleString('id-ID')}
-              </span>
-            )}
+            {(() => {
+              const hasDiscount = typeof ikan.discountPercent === 'number' && ikan.discountPercent > 0
+              // Harga final datang dari backend; jika ada diskon, hitung harga asli untuk ditampilkan coret
+              const finalPrice = ikan.price
+              const originalPrice = hasDiscount
+                ? Math.round(finalPrice / (1 - (ikan.discountPercent || 0) / 100))
+                : null
+              return (
+                <>
+                  <span className="text-3xl font-bold text-primary-main">Rp {finalPrice.toLocaleString('id-ID')}</span>
+                  {hasDiscount && originalPrice !== null && (
+                    <span className="text-xl text-gray-500 line-through">Rp {originalPrice.toLocaleString('id-ID')}</span>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           <p className="text-gray-700 mb-6">{ikan.description}</p>

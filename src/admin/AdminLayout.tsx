@@ -47,6 +47,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             <DashboardIcon />
             Dashboard
           </NavLink>
+          <p className="px-3 mt-4 text-xs font-semibold text-gray-500">Manajemen</p>
+          <NavLink
+            to="/admin/users"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${isActive ? 'bg-primary-light text-primary-dark' : 'text-gray-700 hover:bg-gray-100'}`
+            }
+          >
+            <DashboardIcon />
+            Kelola Pengguna
+          </NavLink>
           <NavLink
             to="/admin/artikel"
             className={({ isActive }) =>
@@ -73,6 +83,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           >
             <FishIcon />
             Kelola Ikan Cupang
+          </NavLink>
+          <NavLink
+            to="/admin/kompetisi"
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${isActive ? 'bg-primary-light text-primary-dark' : 'text-gray-700 hover:bg-gray-100'}`
+            }
+          >
+            <DashboardIcon />
+            Kelola Kompetisi
           </NavLink>
         </nav>
       </aside>

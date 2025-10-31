@@ -8,8 +8,10 @@ type Need = {
   id: number
   name: string
   price: number
+  discountPercent?: number
   mainImage?: string | null
   images?: string[]
+  stock?: number
 }
 
 export default function KebutuhanPage() {
@@ -35,10 +37,14 @@ export default function KebutuhanPage() {
   const onAdd = useCallback(
     (n: Need) => {
       const img = n.mainImage || (n.images && n.images[0]) || ''
+      const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
+      const discounted = hasDiscount
+        ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
+        : n.price
       const cartItem: Omit<CartItem, 'quantity'> = {
         id: n.id,
         name: n.name,
-        price: `Rp ${n.price.toLocaleString('id-ID')}`,
+        price: `Rp ${discounted.toLocaleString('id-ID')}`,
         img,
         category: 'supplies',
       }
@@ -56,11 +62,11 @@ export default function KebutuhanPage() {
             key={n.id}
             className="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden"
           >
-            <div className="relative">
+            <div className="w-full aspect-square overflow-hidden bg-gray-100">
               <img
                 src={n.mainImage || (n.images && n.images[0]) || '../img/kebutuhan-img/1.png'}
                 alt={n.name}
-                className="w-full h-48 object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
             <div className="p-6">
@@ -70,7 +76,25 @@ export default function KebutuhanPage() {
                 </h3>
               </Link>
               <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-primary-main">{`Rp ${n.price.toLocaleString('id-ID')}`}</span>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
+                    const discounted = hasDiscount
+                      ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
+                      : n.price
+                    return (
+                      <>
+                        <span className="text-lg font-bold text-primary-main">{`Rp ${discounted.toLocaleString('id-ID')}`}</span>
+                        {hasDiscount && (
+                          <span className="text-sm text-gray-500 line-through">{`Rp ${n.price.toLocaleString('id-ID')}`}</span>
+                        )}
+                        {hasDiscount && (
+                          <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-700">{`Diskon ${n.discountPercent}%`}</span>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
                 <div className="flex gap-2">
                   <Link
                     to={`/kebutuhan/${n.id}`}

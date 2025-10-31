@@ -147,6 +147,16 @@
 }
 
 @layer utilities {
+  /* Hilangkan spinner untuk input number */
+  .no-spin[type="number"]::-webkit-outer-spin-button,
+  .no-spin[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-spin[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
   /* Skip link util: hanya terlihat saat fokus, dengan styling jelas */
   .skip-link {
     position: absolute;

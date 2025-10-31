@@ -1,6 +1,7 @@
 // Navbar component dengan Tailwind CSS
 import { useCallback, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { getAuth } from '../services/auth'
 
 interface NavbarProps {
   cartCount: number
@@ -53,6 +54,21 @@ export default function Navbar({ cartCount, onToggleCart }: NavbarProps) {
                 {item.label}
               </NavLink>
             ))}
+
+            {/* Profile/Login dengan nama user saat login */}
+            {(() => {
+              const { token, user } = getAuth()
+              const to = token ? '/account' : '/login'
+              const label = token ? `Halo, ${user?.name ?? 'Pengguna'}` : 'Login'
+              return (
+                <NavLink
+                  to={to}
+                  className="text-primary-main hover:text-primary-dark font-medium transition-colors"
+                >
+                  {label}
+                </NavLink>
+              )
+            })()}
 
             {/* Cart Button */}
             <button
@@ -111,6 +127,22 @@ export default function Navbar({ cartCount, onToggleCart }: NavbarProps) {
                   {item.label}
                 </NavLink>
               ))}
+
+              {/* Profile/Login (Mobile) dengan nama user saat login */}
+              {(() => {
+                const { token, user } = getAuth()
+                const to = token ? '/account' : '/login'
+                const label = token ? `Halo, ${user?.name ?? 'Pengguna'}` : 'Login'
+                return (
+                  <NavLink
+                    to={to}
+                    className="block px-3 py-2 text-primary-main hover:text-primary-dark hover:bg-secondary-light rounded-md text-base font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {label}
+                  </NavLink>
+                )
+              })()}
 
               {/* Mobile Cart Button */}
               <button

@@ -30,10 +30,12 @@ export default function IkanPage() {
   const onAdd = useCallback(
     (fish: Fish) => {
       const img = fish.mainImage || (fish.images && fish.images[0]) || ''
+      // Interpretasi baru: backend menyimpan harga final setelah diskon
+      const finalPrice = fish.price
       const item: CartItem = {
         id: fish.id,
         name: fish.name,
-        price: `Rp ${fish.price.toLocaleString('id-ID')}`,
+        price: `Rp ${finalPrice.toLocaleString('id-ID')}`,
         img,
         category: 'fish',
         quantity: 1,
@@ -72,16 +74,20 @@ export default function IkanPage() {
         {fishes.map((fish) => {
           const img = fish.mainImage || (fish.images && fish.images[0]) || ''
           const hasDiscount = typeof fish.discountPercent === 'number' && fish.discountPercent > 0
-          const original = hasDiscount
-            ? Math.round(fish.price / (1 - (fish.discountPercent || 0) / 100))
+          // Harga final dikirim dari backend; jika ada diskon, hitung harga sebelum diskon untuk ditampilkan coret
+          const finalPrice = fish.price
+          const originalPrice = hasDiscount
+            ? Math.round(finalPrice / (1 - (fish.discountPercent || 0) / 100))
             : null
           return (
             <div key={fish.id} className="card p-4">
-              <img
-                src={img}
-                alt={fish.name}
-                className="w-full h-48 object-cover rounded-lg mb-4"
-              />
+              <div className="w-full aspect-square overflow-hidden rounded-lg mb-4 bg-gray-100">
+                <img
+                  src={img}
+                  alt={fish.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-bold text-gray-900">{fish.name}</h4>
                 <span
@@ -93,13 +99,12 @@ export default function IkanPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3 mb-4">
-                <p className="text-primary-main font-semibold">
-                  Rp {fish.price.toLocaleString('id-ID')}
-                </p>
-                {hasDiscount && original && (
-                  <span className="text-sm text-gray-500 line-through">
-                    Rp {original.toLocaleString('id-ID')}
-                  </span>
+                <p className="text-primary-main font-semibold">Rp {finalPrice.toLocaleString('id-ID')}</p>
+                {hasDiscount && originalPrice !== null && (
+                  <span className="text-sm text-gray-500 line-through">Rp {originalPrice.toLocaleString('id-ID')}</span>
+                )}
+                {hasDiscount && (
+                  <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-700">{`Diskon ${fish.discountPercent}%`}</span>
                 )}
               </div>
               <div className="flex gap-3">

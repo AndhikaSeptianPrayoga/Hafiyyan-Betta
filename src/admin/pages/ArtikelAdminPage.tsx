@@ -36,6 +36,7 @@ export default function ArtikelAdminPage() {
   const [confirmId, setConfirmId] = useState<number | null>(null)
   const [tagInput, setTagInput] = useState('')
   const editorRef = useRef<HTMLDivElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const debouncedQuery = useDebouncedValue(query, 300)
 
   useEffect(() => {
@@ -121,6 +122,45 @@ export default function ArtikelAdminPage() {
       // Abaikan jika browser tidak mendukung; ini mencegah error runtime
       console.warn('Command not supported or failed:', cmd, err)
     }
+  }
+
+  const insertImageNode = (src: string) => {
+    const el = editorRef.current
+    if (!el) return
+    el.focus()
+    const img = document.createElement('img')
+    img.src = src
+    img.alt = ''
+    img.style.maxWidth = '100%'
+    img.style.height = 'auto'
+    img.style.borderRadius = '0.5rem'
+    img.style.margin = '0.5rem 0'
+
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(img)
+      // Pindahkan caret setelah gambar
+      range.setStartAfter(img)
+      range.setEndAfter(img)
+      sel.removeAllRanges()
+      sel.addRange(range)
+    } else {
+      el.appendChild(img)
+    }
+    // Sinkronkan isi form
+    setForm((f) => ({ ...f, content: el.innerHTML }))
+  }
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => insertImageNode(String(reader.result))
+    reader.readAsDataURL(file)
+    // reset input agar bisa pilih file yang sama dua kali
+    e.target.value = ''
   }
 
   return (
@@ -304,6 +344,20 @@ export default function ArtikelAdminPage() {
               >
                 1. List
               </button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                Gambar
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={handleImageFileChange}
+              />
             </div>
             <div
               ref={editorRef}
@@ -312,6 +366,23 @@ export default function ArtikelAdminPage() {
               onInput={() =>
                 setForm((f) => ({ ...f, content: editorRef.current?.innerHTML || '' }))
               }
+              onPaste={(e) => {
+                const items = e.clipboardData?.items
+                if (!items) return
+                for (let i = 0; i < items.length; i++) {
+                  const item = items[i]
+                  if (item.type.startsWith('image/')) {
+                    e.preventDefault()
+                    const file = item.getAsFile()
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = () => insertImageNode(String(reader.result))
+                    reader.readAsDataURL(file)
+                    return
+                  }
+                }
+                // default paste untuk teks/HTML
+              }}
             />
             <p className="form-helper">
               Gunakan toolbar di atas atau tempel (paste) dari sumber lain. Konten disimpan sebagai
