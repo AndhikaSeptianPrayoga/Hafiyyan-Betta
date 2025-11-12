@@ -18,6 +18,7 @@ export default function Navbar({ cartCount, onToggleCart }: NavbarProps) {
       { to: '/artikel', label: 'Artikel' },
       { to: '/kebutuhan', label: 'Kebutuhan Cupang' },
       { to: '/ikan', label: 'Ikan Cupang' },
+      { to: '/lomba', label: 'Kompetisi' },
     ],
     []
   )
@@ -59,7 +60,7 @@ export default function Navbar({ cartCount, onToggleCart }: NavbarProps) {
             {(() => {
               const { token, user } = getAuth()
               const to = token ? '/account' : '/login'
-              const label = token ? `Halo, ${user?.name ?? 'Pengguna'}` : 'Login'
+              const label = token ? `Account, ${user?.name ?? 'Pengguna'}` : 'Login'
               return (
                 <NavLink
                   to={to}

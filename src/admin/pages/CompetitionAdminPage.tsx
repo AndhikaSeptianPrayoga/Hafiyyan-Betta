@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import Modal from '../components/Modal'
 import Toast from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -40,7 +41,7 @@ export default function CompetitionAdminPage() {
   const [form, setForm] = useState<CompForm>({
     title: '',
     description: '',
-    status: 'draft',
+    status: 'open',
     startAt: '',
     endAt: '',
     requirements: [],
@@ -54,11 +55,13 @@ export default function CompetitionAdminPage() {
   const [confirmId, setConfirmId] = useState<number | null>(null)
 
   const participantsModal = useModal()
-  const [selectedComp, setSelectedComp] = useState<Competition | null>(null)
+  const [selectedComp] = useState<Competition | null>(null)
   const [registrations, setRegistrations] = useState<any[]>([])
   const [scoreInputs, setScoreInputs] = useState<Record<number, string>>({})
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({})
   const [posterUploading, setPosterUploading] = useState(false)
+  const [statusConfirm, setStatusConfirm] = useState<{ id: number; status: 'draft' | 'open' | 'closed'; title: string } | null>(null)
+  const [regStatusConfirm, setRegStatusConfirm] = useState<{ regId: number; status: 'pending' | 'approved' | 'rejected'; name: string } | null>(null)
 
   useEffect(() => {
     listCompetitions()
@@ -72,7 +75,7 @@ export default function CompetitionAdminPage() {
     setForm({
       title: '',
       description: '',
-      status: 'draft',
+      status: 'open',
       startAt: '',
       endAt: '',
       requirements: ['Wajib menyertakan foto ikan (tautan URL)'],
@@ -105,11 +108,47 @@ export default function CompetitionAdminPage() {
 
   const handlePosterFile = (file?: File | null) => {
     if (!file) return
+    const type = (file.type || '').toLowerCase()
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/x-djvu', 'image/vnd.djvu']
+    if (!allowed.includes(type)) {
+      toast.show('Format tidak didukung. Hanya JPEG, PNG, atau DJVU.', { type: 'error' })
+      return
+    }
     const reader = new FileReader()
     reader.onload = async () => {
       try {
         setPosterUploading(true)
-        const dataUrl = String(reader.result || '')
+        let dataUrl = String(reader.result || '')
+        if (type === 'image/jpeg' || type === 'image/jpg' || type === 'image/png') {
+          // Kompresi sederhana via canvas: max dimensi 1024px, kualitas 0.8 untuk JPEG/PNG
+          const img = new Image()
+          const compress = () => new Promise<string>((resolve, reject) => {
+            img.onload = () => {
+              const canvas = document.createElement('canvas')
+              let { width, height } = img
+              const maxDim = 1024
+              const scale = Math.min(1, maxDim / Math.max(width, height))
+              width = Math.round(width * scale)
+              height = Math.round(height * scale)
+              canvas.width = width
+              canvas.height = height
+              const ctx = canvas.getContext('2d')
+              if (!ctx) return reject(new Error('Canvas tidak tersedia'))
+              ctx.drawImage(img, 0, 0, width, height)
+              try {
+                const format = type === 'image/png' ? 'image/png' : 'image/jpeg'
+                const quality = type === 'image/png' ? undefined : 0.8
+                // @ts-expect-error Canvas toDataURL optional quality for JPEG only
+                resolve(canvas.toDataURL(format, quality))
+              } catch (e) {
+                reject(e)
+              }
+            }
+            img.onerror = () => reject(new Error('Gagal memuat gambar'))
+            img.src = dataUrl
+          })
+          dataUrl = await compress()
+        } // untuk DJVU, kirim dataUrl apa adanya
         const { url } = await uploadCompetitionPoster(dataUrl)
         setForm((f) => ({ ...f, posterImage: url }))
         toast.show('Poster diunggah')
@@ -150,6 +189,12 @@ export default function CompetitionAdminPage() {
 
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
+    const poster = (form.posterImage || '').trim()
+    const isValidPoster = poster === '' || /^https?:\/\//i.test(poster) || poster.startsWith('/uploads/')
+    if (!isValidPoster) {
+      toast.show('URL poster tidak valid. Gunakan hasil upload atau URL absolute/"/uploads/...".', { type: 'error' })
+      return
+    }
     const payload = {
       title: form.title,
       description: form.description,
@@ -159,7 +204,7 @@ export default function CompetitionAdminPage() {
       requirements: form.requirements,
       formFields: form.formFields,
       maxParticipants: form.maxParticipants,
-      posterImage: form.posterImage || null,
+      posterImage: poster || null,
     }
     if (editing) {
       updateCompetition(editing.id, payload)
@@ -193,29 +238,40 @@ export default function CompetitionAdminPage() {
     setConfirmId(null)
   }
 
-  const openParticipants = (c: Competition) => {
-    setSelectedComp(c)
-    participantsModal.open()
-    listRegistrations(c.id)
-      .then((rows) => setRegistrations(Array.isArray(rows) ? rows : []))
-      .catch((err) => toast.show(err?.message || 'Gagal memuat peserta', { type: 'error' }))
-  }
+  // Removed unused openParticipants; navigation to participants page handled via router
 
   const setStatus = (regId: number, status: 'pending' | 'approved' | 'rejected') => {
     if (!selectedComp) return
     updateRegistrationStatus(selectedComp.id, regId, status)
       .then((up) => {
-        setRegistrations((prev) => prev.map((r) => (r.id === regId ? up : r)))
-        toast.show('Status peserta diperbarui')
+        // Merge the updated fields to preserve customer_name, email, and last_score
+        setRegistrations((prev) => prev.map((r) => (r.id === regId ? { ...r, ...up } : r)))
+        const person = registrations.find((r) => r.id === regId)
+        const label = status === 'approved' ? 'di-approve' : status === 'rejected' ? 'di-reject' : 'diubah ke pending'
+        toast.show(`Peserta ${person?.customer_name || ''} ${label}`)
       })
       .catch((err) => toast.show(err?.message || 'Gagal memperbarui status', { type: 'error' }))
+  }
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+  const resolveImageUrl = (url?: string | null): string => {
+    const fallback = '/img/logo.png'
+    if (!url) return fallback
+    if (url.startsWith('/uploads/')) return `${API_BASE}${url}`
+    return url
+  }
+  const isDjvu = (url?: string | null): boolean => {
+    if (!url) return false
+    const u = url.toLowerCase()
+    return u.endsWith('.djvu') || u.endsWith('.djv') || u.startsWith('data:image/vnd.djvu') || u.startsWith('data:image/x-djvu')
   }
 
   const setRank = (regId: number, rank: number | null, finalPosition?: string | null) => {
     if (!selectedComp) return
     updateRegistrationRank(selectedComp.id, regId, rank, finalPosition)
       .then((up) => {
-        setRegistrations((prev) => prev.map((r) => (r.id === regId ? up : r)))
+        // Merge updated ranking to keep other derived fields intact
+        setRegistrations((prev) => prev.map((r) => (r.id === regId ? { ...r, ...up } : r)))
         toast.show('Peringkat tersimpan')
       })
       .catch((err) => toast.show(err?.message || 'Gagal menyimpan peringkat', { type: 'error' }))
@@ -237,6 +293,8 @@ export default function CompetitionAdminPage() {
     i.title.toLowerCase().includes(query.toLowerCase()) ||
     (i.description || '').toLowerCase().includes(query.toLowerCase())
   )
+
+  // Removed unused quickSetStatus in favor of confirmation dialog approach
 
   const addRequirement = (text: string) => {
     const t = text.trim()
@@ -296,10 +354,17 @@ export default function CompetitionAdminPage() {
                   {(c.start_at || '')} {(c.end_at ? `- ${c.end_at}` : '')}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => openParticipants(c)} className="px-3 py-1 rounded-md border hover:bg-gray-50">Peserta</button>
-                    <button onClick={() => openEdit(c)} className="px-3 py-1 rounded-md border hover:bg-gray-50">Edit</button>
-                    <button onClick={() => removeItem(c.id)} className="px-3 py-1 rounded-md bg-red-600 text-white hover:bg-red-700">Hapus</button>
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex justify-end gap-2">
+                      <Link to={`/admin/kompetisi/${c.id}/peserta`} className="px-3 py-1 rounded-md border hover:bg-gray-50">Peserta</Link>
+                      <button onClick={() => openEdit(c)} className="px-3 py-1 rounded-md border hover:bg-gray-50">Edit</button>
+                      <button onClick={() => removeItem(c.id)} className="px-3 py-1 rounded-md bg-red-600 text-white hover:bg-red-700">Hapus</button>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setStatusConfirm({ id: c.id, status: 'draft', title: c.title })} className="text-xs px-2 py-1 rounded-md border hover:bg-gray-50">Draft</button>
+                      <button onClick={() => setStatusConfirm({ id: c.id, status: 'open', title: c.title })} className="text-xs px-2 py-1 rounded-md border hover:bg-gray-50">Buka</button>
+                      <button onClick={() => setStatusConfirm({ id: c.id, status: 'closed', title: c.title })} className="text-xs px-2 py-1 rounded-md border hover:bg-gray-50">Tutup</button>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -364,23 +429,21 @@ export default function CompetitionAdminPage() {
           <div>
             <label className="form-label">Upload Poster</label>
             <div className="flex items-center gap-2">
-              <input type="file" accept="image/*" onChange={(e) => handlePosterFile(e.target.files?.[0])} />
+              <input type="file" accept="image/jpeg,image/png,image/x-djvu,image/vnd.djvu" onChange={(e) => handlePosterFile(e.target.files?.[0])} />
               {posterUploading && <span className="text-xs text-gray-500">Mengunggah...</span>}
             </div>
             {form.posterImage && (
               <div className="mt-2 w-40 aspect-square bg-gray-100 overflow-hidden rounded">
-                <img src={form.posterImage} alt="Poster" className="w-full h-full object-cover" />
+                {/\.djvu?$/.test(form.posterImage) ? (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-600">
+                    Format DJVU tidak didukung untuk preview. <a href={resolveImageUrl(form.posterImage)} target="_blank" rel="noreferrer" className="ml-1 text-primary-main">Buka</a>
+                  </div>
+                ) : (
+                  <img src={resolveImageUrl(form.posterImage)} alt="Poster" className="w-full h-full object-cover" />
+                )}
               </div>
             )}
-            <div className="mt-2">
-              <label className="form-label">Poster Image URL (opsional)</label>
-              <input
-                value={form.posterImage}
-                onChange={(e) => setForm((f) => ({ ...f, posterImage: e.target.value }))}
-                className="form-input"
-                placeholder="https://... atau akan terisi otomatis setelah upload"
-              />
-            </div>
+            <p className="mt-2 text-xs text-gray-500">Gunakan tombol upload di atas. Setelah berhasil diunggah, poster akan otomatis dipakai.</p>
           </div>
           <div>
             <label className="form-label">Kirim Foto Ikan saat daftar</label>
@@ -436,6 +499,27 @@ export default function CompetitionAdminPage() {
         </form>
       </Modal>
 
+      <ConfirmDialog
+        open={!!statusConfirm}
+        title="Konfirmasi Status Kompetisi"
+        description={statusConfirm ? `Yakin ingin mengubah status kompetisi "${statusConfirm.title}" menjadi ${statusConfirm.status === 'open' ? 'Open (dibuka)' : statusConfirm.status === 'closed' ? 'Closed (ditutup)' : 'Draft'}?` : ''}
+        confirmText="Ya, Ubah"
+        cancelText="Batal"
+        onConfirm={() => {
+          if (!statusConfirm) return
+          const { id, status } = statusConfirm
+          updateCompetition(id, { status })
+            .then((up) => {
+              setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...up } : i)))
+              const msg = status === 'open' ? 'Kompetisi dibuka' : status === 'closed' ? 'Kompetisi ditutup' : 'Status menjadi Draft'
+              toast.show(msg)
+            })
+            .catch((err) => toast.show(err?.message || 'Gagal memperbarui status kompetisi', { type: 'error' }))
+            .finally(() => setStatusConfirm(null))
+        }}
+        onCancel={() => setStatusConfirm(null)}
+      />
+
       <Modal isOpen={participantsModal.isOpen} title={selectedComp ? `Peserta: ${selectedComp.title}` : 'Peserta'} onClose={participantsModal.close}>
         <div className="space-y-4">
           {!selectedComp ? (
@@ -447,6 +531,7 @@ export default function CompetitionAdminPage() {
               <thead>
                 <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-500">
                   <th className="px-3 py-2">Peserta</th>
+                  <th className="px-3 py-2">Data Pendaftaran</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Peringkat</th>
                   <th className="px-3 py-2">Komentar Terakhir</th>
@@ -461,11 +546,47 @@ export default function CompetitionAdminPage() {
                       <div className="text-xs text-gray-500">{r.customer_email}</div>
                     </td>
                     <td className="px-3 py-2">
+                      {(() => {
+                        const ans = (r as any).answers || {}
+                        const nomor = ans.nomor || ans.no_peserta || r.id
+                        const namaIkan = ans.nama_ikan || '-'
+                        const kategori = ans.kategori || '-'
+                        const foto = ans.foto_ikan || ''
+                        return (
+                          <div className="flex items-center gap-3">
+                            <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden">
+                              {foto ? (
+                                isDjvu(foto) ? (
+                                  <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-600 p-1 text-center">
+                                    DJVU tidak bisa preview. <a href={resolveImageUrl(foto)} target="_blank" rel="noreferrer" className="text-primary-main">Buka</a>
+                                  </div>
+                                ) : (
+                                  <img src={resolveImageUrl(foto)} alt="Foto peserta" className="w-full h-full object-cover" />
+                                )
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">Tidak ada foto</div>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              <div><span className="font-medium">Nomor:</span> {nomor}</div>
+                              <div><span className="font-medium">Nama Ikan:</span> {namaIkan}</div>
+                              <div><span className="font-medium">Kategori:</span> {kategori}</div>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-3 py-2">
                       <select value={r.status} onChange={(e) => setStatus(r.id, e.target.value as any)} className="form-input text-xs">
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>
                       </select>
+                      <div className="flex gap-1 mt-1">
+                        <button className="px-2 py-1 rounded-md border text-xs" onClick={() => setRegStatusConfirm({ regId: r.id, status: 'pending', name: r.customer_name ?? '' })}>Pending</button>
+                        <button className="px-2 py-1 rounded-md border text-xs" onClick={() => setRegStatusConfirm({ regId: r.id, status: 'approved', name: r.customer_name ?? '' })}>Approve</button>
+                        <button className="px-2 py-1 rounded-md border text-xs" onClick={() => setRegStatusConfirm({ regId: r.id, status: 'rejected', name: r.customer_name ?? '' })}>Reject</button>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -477,16 +598,52 @@ export default function CompetitionAdminPage() {
                       {r.last_score?.comment || '-'}
                     </td>
                   <td className="px-3 py-2">
-                    <div className="flex justify-end gap-2">
-                        <input type="number" className="form-input w-24 text-xs" placeholder="Skor" value={scoreInputs[r.id] ?? ''} onChange={(e) => setScoreInputs((prev) => ({ ...prev, [r.id]: e.target.value }))} />
-                        <input className="form-input w-44 text-xs" placeholder="Komentar" value={commentInputs[r.id] ?? ''} onChange={(e) => setCommentInputs((prev) => ({ ...prev, [r.id]: e.target.value }))} />
-                        <button className="px-3 py-1 rounded-md border hover:bg-gray-50" onClick={() => {
-                          const sVal = scoreInputs[r.id] ? Number(scoreInputs[r.id]) : null
-                          const cVal = commentInputs[r.id] || ''
-                          saveScore(r.id, sVal, cVal)
-                          setScoreInputs((prev) => ({ ...prev, [r.id]: '' }))
-                          setCommentInputs((prev) => ({ ...prev, [r.id]: '' }))
-                        }}>Simpan Penilaian</button>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-2 w-full justify-end">
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          className="w-40"
+                          value={Number(scoreInputs[r.id] ?? r.last_score?.total_score ?? 0)}
+                          onChange={(e) => setScoreInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                        />
+                        <input
+                          type="number"
+                          className="form-input w-20 text-xs"
+                          placeholder="Skor"
+                          value={scoreInputs[r.id] ?? ''}
+                          onChange={(e) => setScoreInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 w-full justify-end">
+                        <input
+                          className="form-input w-64 text-xs"
+                          placeholder="Komentar"
+                          value={commentInputs[r.id] ?? ''}
+                          onChange={(e) => setCommentInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              const sVal = scoreInputs[r.id] ? Number(scoreInputs[r.id]) : null
+                              const cVal = commentInputs[r.id] || ''
+                              saveScore(r.id, sVal, cVal)
+                              setScoreInputs((prev) => ({ ...prev, [r.id]: '' }))
+                              setCommentInputs((prev) => ({ ...prev, [r.id]: '' }))
+                            }
+                          }}
+                        />
+                        <button
+                          className="px-3 py-1 rounded-md border hover:bg-gray-50"
+                          onClick={() => {
+                            const sVal = scoreInputs[r.id] ? Number(scoreInputs[r.id]) : null
+                            const cVal = commentInputs[r.id] || ''
+                            saveScore(r.id, sVal, cVal)
+                            setScoreInputs((prev) => ({ ...prev, [r.id]: '' }))
+                            setCommentInputs((prev) => ({ ...prev, [r.id]: '' }))
+                          }}
+                        >Simpan Penilaian</button>
+                      </div>
                     </div>
                   </td>
                   </tr>
@@ -496,6 +653,20 @@ export default function CompetitionAdminPage() {
           )}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={!!regStatusConfirm}
+        title="Konfirmasi Status Peserta"
+        description={regStatusConfirm ? `Yakin ingin mengubah status peserta "${regStatusConfirm.name}" menjadi ${regStatusConfirm.status === 'approved' ? 'Approved' : regStatusConfirm.status === 'rejected' ? 'Rejected' : 'Pending'}?` : ''}
+        confirmText="Ya, Ubah"
+        cancelText="Batal"
+        onConfirm={() => {
+          if (!regStatusConfirm) return
+          setStatus(regStatusConfirm.regId, regStatusConfirm.status)
+          setRegStatusConfirm(null)
+        }}
+        onCancel={() => setRegStatusConfirm(null)}
+      />
 
       <ConfirmDialog
         open={confirmId !== null}

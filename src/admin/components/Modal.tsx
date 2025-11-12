@@ -3,15 +3,27 @@ interface ModalProps {
   title?: string
   onClose: () => void
   children: React.ReactNode
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-export default function Modal({ isOpen, title, onClose, children }: ModalProps) {
+export default function Modal({ isOpen, title, onClose, children, size = 'md' }: ModalProps) {
   if (!isOpen) return null
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full sm:max-w-2xl bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+          className={
+            `w-full bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-[90vh] ` +
+            (size === 'sm'
+              ? 'sm:max-w-md'
+              : size === 'md'
+              ? 'sm:max-w-2xl'
+              : size === 'lg'
+              ? 'sm:max-w-3xl'
+              : 'sm:max-w-4xl')
+          }
+        >
           <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b bg-white">
             <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
             <button

@@ -31,8 +31,9 @@ export default function ArtikelPage() {
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="flex items-end justify-between mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary-main">Artikel Terbaru</h1>
+      <div className="text-center mb-12">
+        <h1 className="text-3xl font-bold text-gray-900">Katalog Artikel</h1>
+        <p className="text-gray-600 mt-2">Temukan artikel terbaru dan informasi menarik tentang ikan cupang</p>
       </div>
 
       {loading && <p className="text-gray-600">Memuat...</p>}

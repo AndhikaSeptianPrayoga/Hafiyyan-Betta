@@ -2,6 +2,26 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listOpenCompetitions } from '../admin/services/api'
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+function resolveImageUrl(url?: string | null): string {
+  const fallback = '/img/logo.png'
+  if (!url) return fallback
+  // If relative upload path, prefix with API_BASE
+  if (url.startsWith('/uploads/')) return `${API_BASE}${url}`
+  return url
+}
+
+function isDjvu(url?: string | null): boolean {
+  if (!url) return false
+  try {
+    const u = url.toLowerCase()
+    return u.endsWith('.djvu') || u.endsWith('.djv') || u.startsWith('data:image/vnd.djvu') || u.startsWith('data:image/x-djvu')
+  } catch {
+    return false
+  }
+}
+
 type Competition = {
   id: number
   title: string
@@ -55,7 +75,13 @@ export default function KompetisiPage() {
           {items.map((c) => (
             <div key={c.id} className="bg-white rounded-xl shadow overflow-hidden">
               <div className="w-full aspect-square overflow-hidden bg-gray-100">
-                <img src={c.poster_image || ''} alt={c.title} className="w-full h-full object-cover" />
+                {isDjvu(c.poster_image) ? (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-600">
+                    Poster DJVU tidak bisa ditampilkan. <a href={resolveImageUrl(c.poster_image)} target="_blank" rel="noreferrer" className="ml-1 text-primary-main">Buka</a>
+                  </div>
+                ) : (
+                  <img src={resolveImageUrl(c.poster_image)} alt={c.title} className="w-full h-full object-cover" />
+                )}
               </div>
               <div className="p-4">
                 <h3 className="text-lg font-semibold">{c.title}</h3>

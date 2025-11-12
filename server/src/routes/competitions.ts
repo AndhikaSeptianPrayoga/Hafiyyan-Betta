@@ -101,13 +101,13 @@ router.post('/poster', auth, requireAdmin, async (req: Request, res: Response) =
     if (typeof imageBase64 !== 'string' || imageBase64.length < 20) {
       return res.status(400).json({ error: 'Gambar tidak valid' })
     }
-    // Parse data URL
-    const match = imageBase64.match(/^data:(image\/(png|jpe?g|webp));base64,(.+)$/i)
-    if (!match) return res.status(400).json({ error: 'Format gambar harus base64 data URL' })
-    const mime = match[1]
-    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg'
-    const data = match[3]
-    const buffer = Buffer.from(data, 'base64')
+  // Parse data URL (only allow jpeg/jpg, png, djvu)
+  const match = imageBase64.match(/^data:(image\/(png|jpe?g|vnd\.djvu|x-djvu));base64,(.+)$/i)
+  if (!match) return res.status(400).json({ error: 'Format gambar harus base64 data URL (jpeg, png, djvu)' })
+  const mime = match[1]
+  const ext = mime.includes('png') ? 'png' : mime.includes('djvu') ? 'djvu' : 'jpg'
+  const data = match[3]
+  const buffer = Buffer.from(data, 'base64')
     // Ensure dir exists
     const dir = path.join(__dirname, '..', 'uploads', 'competitions')
     fs.mkdirSync(dir, { recursive: true })
@@ -118,6 +118,31 @@ router.post('/poster', auth, requireAdmin, async (req: Request, res: Response) =
     res.json({ url: publicUrl })
   } catch (e) {
     res.status(500).json({ error: 'Gagal mengunggah poster' })
+  }
+})
+
+// User: upload fish photo (base64 data URL)
+router.post('/upload-fish', auth, async (req: Request & { user?: any }, res: Response) => {
+  try {
+    const { imageBase64 } = req.body || {}
+    if (typeof imageBase64 !== 'string' || imageBase64.length < 20) {
+      return res.status(400).json({ error: 'Gambar tidak valid' })
+    }
+  const match = imageBase64.match(/^data:(image\/(png|jpe?g|vnd\.djvu|x-djvu));base64,(.+)$/i)
+  if (!match) return res.status(400).json({ error: 'Format gambar harus base64 data URL (jpeg, png, djvu)' })
+  const mime = match[1]
+  const ext = mime.includes('png') ? 'png' : mime.includes('djvu') ? 'djvu' : 'jpg'
+  const data = match[3]
+  const buffer = Buffer.from(data, 'base64')
+    const dir = path.join(__dirname, '..', 'uploads', 'competitions', 'fish')
+    fs.mkdirSync(dir, { recursive: true })
+    const filename = `fish_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+    const filepath = path.join(dir, filename)
+    fs.writeFileSync(filepath, buffer)
+    const publicUrl = `/uploads/competitions/fish/${filename}`
+    res.json({ url: publicUrl })
+  } catch (e) {
+    res.status(500).json({ error: 'Gagal mengunggah foto ikan' })
   }
 })
 

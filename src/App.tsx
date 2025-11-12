@@ -11,7 +11,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const ProfilPage = lazy(() => import('./pages/ProfilPage'))
 const ArtikelPage = lazy(() => import('./pages/ArtikelPage'))
 const KebutuhanPage = lazy(() => import('./pages/KebutuhanPage'))
-const IkanPage = lazy(() => import('./pages/ikanpage'))
+const IkanPage = lazy(() => import('./pages/IkanPage'))
 const KompetisiPage = lazy(() => import('./pages/KompetisiPage'))
 const DetailKompetisi = lazy(() => import('./pages/DetailKompetisi'))
 const DetailArtikel = lazy(() => import('./pages/DetailArtikel'))
@@ -60,6 +60,8 @@ const EnhancedUserAdmin = enhance(UserAdminPage, 'UserAdminPage')
 const EnhancedLoginAdmin = enhance(LoginAdminPage, 'LoginAdminPage')
 const CompetitionAdminPage = lazy(() => import('./admin/pages/CompetitionAdminPage'))
 const EnhancedCompetitionAdmin = enhance(CompetitionAdminPage, 'CompetitionAdminPage')
+const CompetitionRegistrationsPage = lazy(() => import('./admin/pages/CompetitionRegistrationsPage'))
+const EnhancedCompetitionRegistrations = enhance(CompetitionRegistrationsPage, 'CompetitionRegistrationsPage')
 
 export default function App() {
   return (
@@ -119,6 +121,12 @@ export default function App() {
           path="/admin/kompetisi"
           element={
             <EnhancedAdminLayout children={<RequireAdmin children={<EnhancedCompetitionAdmin />} />} />
+          }
+        />
+        <Route
+          path="/admin/kompetisi/:id/peserta"
+          element={
+            <EnhancedAdminLayout children={<RequireAdmin children={<EnhancedCompetitionRegistrations />} />} />
           }
         />
       </Routes>

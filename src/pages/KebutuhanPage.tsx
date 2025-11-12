@@ -49,70 +49,72 @@ export default function KebutuhanPage() {
         category: 'supplies',
       }
       dispatch(addItem(cartItem))
+      alert(`${n.name} berhasil ditambahkan ke keranjang!`)
     },
     [dispatch]
   )
 
   return (
     <div className="container mx-auto px-4 py-16">
-      <h1 className="text-3xl md:text-4xl font-bold text-primary-main mb-8">Kebutuhan Cupang</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {needs.map((n) => (
-          <div
-            key={n.id}
-            className="bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden"
-          >
-            <div className="w-full aspect-square overflow-hidden bg-gray-100">
-              <img
-                src={n.mainImage || (n.images && n.images[0]) || '../img/kebutuhan-img/1.png'}
-                alt={n.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="p-6">
-              <Link to={`/kebutuhan/${n.id}`}>
-                <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-primary-main transition">
-                  {n.name}
-                </h3>
-              </Link>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
-                    const discounted = hasDiscount
-                      ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
-                      : n.price
-                    return (
-                      <>
-                        <span className="text-lg font-bold text-primary-main">{`Rp ${discounted.toLocaleString('id-ID')}`}</span>
-                        {hasDiscount && (
-                          <span className="text-sm text-gray-500 line-through">{`Rp ${n.price.toLocaleString('id-ID')}`}</span>
-                        )}
-                        {hasDiscount && (
-                          <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-700">{`Diskon ${n.discountPercent}%`}</span>
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
-                <div className="flex gap-2">
-                  <Link
-                    to={`/kebutuhan/${n.id}`}
-                    className="px-3 py-2 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
-                  >
-                    Detail
-                  </Link>
-                  <button
-                    onClick={() => onAdd(n)}
-                    className="px-3 py-2 rounded border border-gray-200 text-primary-main hover:bg-primary-main hover:text-white transition"
-                  >
-                    Tambah
-                  </button>
-                </div>
+      <div className="text-center mb-12">
+        <h1 className="text-3xl font-bold text-gray-900">Katalog Kebutuhan Cupang</h1>
+        <p className="text-gray-600 mt-2">Temukan perlengkapan dan kebutuhan terbaik untuk merawat ikan cupang kesayangan Anda</p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {needs.map((n) => {
+          const img = n.mainImage || (n.images && n.images[0]) || ''
+          const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
+          const discounted = hasDiscount
+            ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
+            : n.price
+          const stock = typeof n.stock === 'number' ? n.stock : 0
+          return (
+            <div key={n.id} className="card p-4">
+              <div className="w-full aspect-square overflow-hidden rounded-lg mb-4 bg-gray-100">
+                <img
+                  src={img}
+                  alt={n.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-gray-900 line-clamp-2">{n.name}</h4>
+                <span
+                  className={`px-2 py-1 text-xs rounded-full ${
+                    stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {stock > 0 ? `Stok: ${stock}` : 'Stok Habis'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xl font-bold text-primary-main">Rp {discounted.toLocaleString('id-ID')}</span>
+                {hasDiscount && (
+                  <span className="text-gray-500 line-through">Rp {n.price.toLocaleString('id-ID')}</span>
+                )}
+                {hasDiscount && (
+                  <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-700">Diskon {n.discountPercent}%</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Link
+                  to={`/kebutuhan/${n.id}`}
+                  className="px-6 py-3 border border-primary-main text-primary-main rounded-lg hover:bg-primary-main hover:text-white transition-colors"
+                >
+                  Lihat Detail
+                </Link>
+                <button
+                  onClick={() => onAdd(n)}
+                  disabled={!stock || stock <= 0}
+                  className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Tambah ke Keranjang
+                </button>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {!loading && !error && needs.length === 0 && (
           <p className="text-gray-600">Belum ada produk kebutuhan.</p>
         )}

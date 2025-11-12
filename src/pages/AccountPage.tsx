@@ -48,9 +48,22 @@ function KompetisiSaya() {
   const [items, setItems] = useState<any[]>([])
   const [error, setError] = useState('')
   useEffect(() => {
-    myCompetitions()
-      .then((rows) => setItems(Array.isArray(rows) ? rows : []))
-      .catch((err) => setError(err?.message || 'Gagal memuat status kompetisi'))
+    let cancelled = false
+    const load = () => {
+      myCompetitions()
+        .then((rows) => {
+          if (!cancelled) setItems(Array.isArray(rows) ? rows : [])
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err?.message || 'Gagal memuat status kompetisi')
+        })
+    }
+    load()
+    const t = setInterval(load, 10000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
   }, [])
   return (
     <div className="bg-white rounded-xl shadow p-6">

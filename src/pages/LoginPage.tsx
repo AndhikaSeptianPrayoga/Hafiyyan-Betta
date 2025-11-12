@@ -9,12 +9,12 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
-  const redirectTo = (location.state as any)?.redirectTo || '/checkout'
+  const redirectTo = (location.state as any)?.redirectTo || '/account'
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   useEffect(() => {
     const { token } = getAuth()
-    if (token) navigate('/account', { replace: true })
+    if (token) navigate(redirectTo, { replace: true })
   }, [navigate])
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-md w-full bg-white shadow rounded-xl p-6">
         <h1 className="text-xl font-semibold text-gray-900 mb-2">Login</h1>
-        <p className="text-sm text-gray-500 mb-4">Masuk untuk melanjutkan checkout</p>
+        <p className="text-sm text-gray-500 mb-4">Masuk untuk melanjutkan</p>
         {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
         <form onSubmit={onSubmit} className="space-y-3">
           <div>

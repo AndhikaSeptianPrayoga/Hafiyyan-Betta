@@ -358,6 +358,27 @@ export async function uploadCompetitionPoster(imageBase64: string): Promise<{ ur
   }
 }
 
+export async function uploadCompetitionFishPhoto(imageBase64: string): Promise<{ url: string }> {
+  const token = localStorage.getItem('user_token') || ''
+  const res = await fetch(`${API_BASE}/api/competitions/upload-fish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ imageBase64 }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data?.error || 'Gagal mengunggah foto ikan')
+  }
+  const data = await res.json()
+  const relative = data?.url as string
+  try {
+    const absolute = new URL(relative, API_BASE).toString()
+    return { url: absolute }
+  } catch {
+    return { url: `${API_BASE}${relative}` }
+  }
+}
+
 export type CompetitionRegistration = {
   id: number
   competition_id: number
