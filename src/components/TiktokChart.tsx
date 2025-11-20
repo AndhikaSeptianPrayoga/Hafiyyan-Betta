@@ -38,7 +38,6 @@ export default function TiktokChart() {
   }
 
   useEffect(() => {
-    let mounted = true
     async function load() {
       setLoading(true)
       try {
@@ -111,9 +110,6 @@ export default function TiktokChart() {
       }
     }
     load()
-    return () => {
-      mounted = false
-    }
   }, [])
 
   return (
