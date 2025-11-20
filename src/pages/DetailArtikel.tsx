@@ -1,6 +1,6 @@
 // DetailArtikel component dengan Tailwind CSS
 import { useParams, Link } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getArticle } from '../admin/services/api'
 import RelatedSection from '../components/RelatedSection'
 

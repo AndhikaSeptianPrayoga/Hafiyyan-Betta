@@ -165,24 +165,6 @@ export default function IkanAdminPage() {
     formModal.close()
   }
 
-  const addAdvantage = () => {
-    const v = advInput.trim()
-    if (!v) return
-    setForm((f) => ({ ...f, advantages: [v, ...f.advantages] }))
-    setAdvInput('')
-  }
-  const removeAdvantageAt = (idx: number) => {
-    setForm((f) => ({ ...f, advantages: f.advantages.filter((_, i) => i !== idx) }))
-  }
-  const addCareGuide = () => {
-    const v = careInput.trim()
-    if (!v) return
-    setForm((f) => ({ ...f, careGuide: [v, ...f.careGuide] }))
-    setCareInput('')
-  }
-  const removeCareAt = (idx: number) => {
-    setForm((f) => ({ ...f, careGuide: f.careGuide.filter((_, i) => i !== idx) }))
-  }
 
   const onMainImageChange = (file?: File | null) => {
     if (!file) return
