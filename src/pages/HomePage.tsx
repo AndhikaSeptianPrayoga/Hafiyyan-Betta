@@ -1,6 +1,7 @@
 // HomePage component dengan Tailwind CSS
 import { NavLink } from 'react-router-dom'
 import Seo from '../components/Seo'
+import TiktokChart from '../components/TiktokChart'
 
 export default function HomePage() {
   return (
@@ -188,6 +189,9 @@ A h2 2 0 100 14h-2z"
           </div>
         </div>
       </section>
+
+      {/* TikTok Section */}
+      <TiktokChart />
 
       {/* CTA Section */}
       <section className="py-20 bg-gray-50">

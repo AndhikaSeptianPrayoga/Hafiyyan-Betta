@@ -9,6 +9,7 @@ import articlesRoutes from './routes/articles'
 import fishRoutes from './routes/fish'
 import needsRoutes from './routes/needs'
 import competitionsRoutes from './routes/competitions'
+import socialRoutes from './routes/social'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
@@ -31,6 +32,7 @@ app.use('/api/articles', articlesRoutes)
 app.use('/api/fish', fishRoutes)
 app.use('/api/needs', needsRoutes)
 app.use('/api/competitions', competitionsRoutes)
+app.use('/api/social', socialRoutes)
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found' })
