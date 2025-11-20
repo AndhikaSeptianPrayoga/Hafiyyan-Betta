@@ -10,6 +10,7 @@ import RequireAdmin from './admin/RequireAdmin'
 const HomePage = lazy(() => import('./pages/HomePage'))
 const ProfilPage = lazy(() => import('./pages/ProfilPage'))
 const ArtikelPage = lazy(() => import('./pages/ArtikelPage'))
+const ShopPage = lazy(() => import('./pages/ShopPage'))
 const KebutuhanPage = lazy(() => import('./pages/KebutuhanPage'))
 const IkanPage = lazy(() => import('./pages/IkanPage'))
 const KompetisiPage = lazy(() => import('./pages/KompetisiPage'))
@@ -39,6 +40,7 @@ const EnhancedHome = enhance(HomePage, 'HomePage')
 const EnhancedProfil = enhance(ProfilPage, 'ProfilPage')
 const EnhancedArtikel = enhance(ArtikelPage, 'ArtikelPage')
 const EnhancedDetailArtikel = enhance(DetailArtikel, 'DetailArtikel')
+const EnhancedShop = enhance(ShopPage, 'ShopPage')
 const EnhancedKebutuhan = enhance(KebutuhanPage, 'KebutuhanPage')
 const EnhancedDetailKebutuhan = enhance(DetailKebutuhan, 'DetailKebutuhan')
 const EnhancedIkan = enhance(IkanPage, 'IkanPage')
@@ -71,6 +73,7 @@ export default function App() {
         <Route path="/profil" element={<Layout children={<EnhancedProfil />} />} />
         <Route path="/artikel" element={<Layout children={<EnhancedArtikel />} />} />
         <Route path="/artikel/:id" element={<Layout children={<EnhancedDetailArtikel />} />} />
+        <Route path="/shop" element={<Layout children={<EnhancedShop />} />} />
         <Route path="/kebutuhan" element={<Layout children={<EnhancedKebutuhan />} />} />
         <Route path="/kebutuhan/:id" element={<Layout children={<EnhancedDetailKebutuhan />} />} />
         <Route path="/ikan" element={<Layout children={<EnhancedIkan />} />} />

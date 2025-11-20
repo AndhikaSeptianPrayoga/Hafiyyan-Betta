@@ -138,7 +138,6 @@ export default function CompetitionAdminPage() {
               try {
                 const format = type === 'image/png' ? 'image/png' : 'image/jpeg'
                 const quality = type === 'image/png' ? undefined : 0.8
-                // @ts-expect-error Canvas toDataURL optional quality for JPEG only
                 resolve(canvas.toDataURL(format, quality))
               } catch (e) {
                 reject(e)

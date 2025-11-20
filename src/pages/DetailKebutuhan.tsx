@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAppDispatch, addItem } from '../redux'
 import { getNeed } from '../admin/services/api'
+import RelatedSection from '../components/RelatedSection'
 
 type Need = {
   id: number
@@ -71,14 +72,11 @@ export default function DetailKebutuhan() {
 
   const handleAddToCartClick = () => {
     const img = kebutuhan.mainImage || (kebutuhan.images && kebutuhan.images[0]) || ''
-    const hasDiscount = typeof kebutuhan.discountPercent === 'number' && kebutuhan.discountPercent > 0
-    const discounted = hasDiscount
-      ? Math.round(kebutuhan.price * (1 - (kebutuhan.discountPercent || 0) / 100))
-      : kebutuhan.price
+    const finalPrice = kebutuhan.price
     const cartItem = {
       id: kebutuhan.id,
       name: kebutuhan.name,
-      price: `Rp ${discounted.toLocaleString('id-ID')}`,
+      price: `Rp ${finalPrice.toLocaleString('id-ID')}`,
       img,
       category: 'supplies' as const,
     }
@@ -154,18 +152,15 @@ export default function DetailKebutuhan() {
           <div className="flex items-center gap-4 mb-6">
             {(() => {
               const hasDiscount = typeof kebutuhan.discountPercent === 'number' && kebutuhan.discountPercent > 0
-              const discounted = hasDiscount
-                ? Math.round(kebutuhan.price * (1 - (kebutuhan.discountPercent || 0) / 100))
-                : kebutuhan.price
+              const finalPrice = kebutuhan.price
+              const originalPrice = hasDiscount
+                ? Math.round(finalPrice / (1 - (kebutuhan.discountPercent || 0) / 100))
+                : null
               return (
                 <>
-                  <span className="text-3xl font-bold text-primary-main">
-                    Rp {discounted.toLocaleString('id-ID')}
-                  </span>
-                  {hasDiscount && (
-                    <span className="text-xl text-gray-500 line-through">
-                      Rp {kebutuhan.price.toLocaleString('id-ID')}
-                    </span>
+                  <span className="text-3xl font-bold text-primary-main">Rp {finalPrice.toLocaleString('id-ID')}</span>
+                  {hasDiscount && originalPrice !== null && (
+                    <span className="text-xl text-gray-500 line-through">Rp {originalPrice.toLocaleString('id-ID')}</span>
                   )}
                 </>
               )
@@ -174,50 +169,50 @@ export default function DetailKebutuhan() {
 
           <p className="text-gray-700 mb-6">{kebutuhan.description}</p>
 
-          {/* Spesifikasi */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Spesifikasi Produk</h3>
-            {Array.isArray(kebutuhan.specs) && kebutuhan.specs.length > 0 ? (
-              <ul className="space-y-2 bg-gray-50 rounded-lg p-4">
-                {kebutuhan.specs.map((s: string, idx: number) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Tidak ada spesifikasi.</p>
-            )}
-          </div>
-
-          {/* Paket termasuk */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Yang Termasuk</h3>
-            {Array.isArray(kebutuhan.includes) && kebutuhan.includes.length > 0 ? (
-              <ul className="space-y-2">
-                {kebutuhan.includes.map((item: string, index: number) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Tidak ada paket termasuk.</p>
-            )}
+          {/* Spesifikasi & Yang Termasuk - dua kolom */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Spesifikasi Produk</h3>
+              {Array.isArray(kebutuhan.specs) && kebutuhan.specs.length > 0 ? (
+                <ul className="space-y-2 bg-gray-50 rounded-lg p-4">
+                  {kebutuhan.specs.map((s: string, idx: number) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Tidak ada spesifikasi.</p>
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Yang Termasuk</h3>
+              {Array.isArray(kebutuhan.includes) && kebutuhan.includes.length > 0 ? (
+                <ul className="space-y-2 bg-gray-50 rounded-lg p-4">
+                  {kebutuhan.includes.map((item: string, index: number) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">Tidak ada paket termasuk.</p>
+              )}
+            </div>
           </div>
 
           {/* Quantity & Add to Cart */}
@@ -263,65 +258,12 @@ export default function DetailKebutuhan() {
             </div>
           </div>
 
-          {/* Fitur / Keunggulan */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Keunggulan Produk</h3>
-            {Array.isArray(kebutuhan.features) && kebutuhan.features.length > 0 ? (
-              <ul className="space-y-2">
-                {kebutuhan.features.map((feature: string, index: number) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Tidak ada keunggulan.</p>
-            )}
-          </div>
+          {/* Keunggulan Produk dihapus sesuai permintaan */}
           {/* Tanpa garansi khusus */}
         </div>
       </div>
 
-      {/* Related Products */}
-      <div className="mt-16">
-        <h3 className="text-2xl font-bold text-gray-900 mb-8">Produk Terkait</h3>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="card">
-            <img
-              src="/img/kebutuhan-img/1.png"
-              alt="Produk Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Filter Internal 300L</h4>
-            <p className="text-primary-main font-semibold">Rp 85.000</p>
-          </div>
-          <div className="card">
-            <img
-              src="/img/kebutuhan-img/2.png"
-              alt="Produk Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Heater 100W</h4>
-            <p className="text-primary-main font-semibold">Rp 120.000</p>
-          </div>
-          <div className="card">
-            <img
-              src="/img/kebutuhan-img/3.png"
-              alt="Produk Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Lampu LED 20W</h4>
-            <p className="text-primary-main font-semibold">Rp 95.000</p>
-          </div>
-        </div>
-      </div>
+      <RelatedSection kind="kebutuhan" currentId={kebutuhan.id} />
     </div>
   )
 }

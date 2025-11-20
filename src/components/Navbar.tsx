@@ -16,8 +16,7 @@ export default function Navbar({ cartCount, onToggleCart }: NavbarProps) {
       { to: '/', label: 'Home' },
       { to: '/profil', label: 'Profil' },
       { to: '/artikel', label: 'Artikel' },
-      { to: '/kebutuhan', label: 'Kebutuhan Cupang' },
-      { to: '/ikan', label: 'Ikan Cupang' },
+      { to: '/shop', label: 'Shop' },
       { to: '/lomba', label: 'Kompetisi' },
     ],
     []

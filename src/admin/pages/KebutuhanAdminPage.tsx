@@ -16,7 +16,6 @@ type Need = {
   discountPercent: number
   specs: string[]
   includes: string[]
-  features: string[]
   stock: number
   mainImage: string
   images: string[]
@@ -27,10 +26,9 @@ type NeedForm = {
   name: string
   description: string
   price: number
-  discountPercent: number | ''
+  discountAmount: number
   specs: string[]
   includes: string[]
-  features: string[]
   stock: number | ''
   mainImage: string
   images: string[]
@@ -44,17 +42,16 @@ export default function KebutuhanAdminPage() {
     name: '',
     description: '',
     price: 0,
-    discountPercent: 0,
+    discountAmount: 0,
     specs: [],
     includes: [],
-    features: [],
     stock: 0,
     mainImage: '',
     images: [],
   })
   const [specInput, setSpecInput] = useState('')
   const [includeInput, setIncludeInput] = useState('')
-  const [featureInput, setFeatureInput] = useState('')
+  
   const [query, setQuery] = useState('')
   const toast = useToast()
   const [confirmId, setConfirmId] = useState<number | null>(null)
@@ -73,49 +70,53 @@ export default function KebutuhanAdminPage() {
       name: '',
       description: '',
       price: 0,
-      discountPercent: 0,
+      discountAmount: 0,
       specs: [],
       includes: [],
-      features: [],
       stock: 0,
       mainImage: '',
       images: [],
     })
     setSpecInput('')
     setIncludeInput('')
-    setFeatureInput('')
     formModal.open()
   }
   const openEdit = (n: Need) => {
     setEditing(n)
+    const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
+    const estimatedOriginal = hasDiscount ? Math.round(n.price / (1 - n.discountPercent / 100)) : n.price
+    const discountAmount = Math.max(0, estimatedOriginal - n.price)
     setForm({
       name: n.name,
       description: n.description,
       price: n.price,
-      discountPercent: n.discountPercent,
+      discountAmount,
       specs: [...n.specs],
       includes: [...n.includes],
-      features: [...n.features],
       stock: n.stock,
       mainImage: n.mainImage,
       images: [...n.images],
     })
     setSpecInput('')
     setIncludeInput('')
-    setFeatureInput('')
     formModal.open()
   }
   const removeItem = (id: number) => setConfirmId(id)
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
-    const discount = typeof form.discountPercent === 'number' ? form.discountPercent : 0
-    // Backend diinterpretasikan menyimpan harga akhir; kirim harga setelah diskon
-    const finalPrice = Math.round(form.price * (1 - discount / 100))
+    const amount = Math.max(0, Math.min(form.price, form.discountAmount || 0))
+    const finalPrice = Math.max(0, form.price - amount)
+    const discountPercent = form.price > 0 ? Math.round((amount / form.price) * 100) : 0
     const payload = {
-      ...form,
+      name: form.name,
+      description: form.description,
       price: finalPrice,
-      discountPercent: discount,
+      discountPercent,
+      specs: form.specs,
+      includes: form.includes,
       stock: typeof form.stock === 'number' ? form.stock : 0,
+      mainImage: form.mainImage,
+      images: form.images,
     }
     if (editing) {
       updateNeed(editing.id, payload)
@@ -135,16 +136,15 @@ export default function KebutuhanAdminPage() {
     formModal.close()
   }
 
-  const addListItem = (key: 'specs' | 'includes' | 'features', value: string) => {
+  const addListItem = (key: 'specs' | 'includes', value: string) => {
     const v = value.trim()
     if (!v) return
     setForm((f) => ({ ...f, [key]: [...f[key], v] }))
     if (key === 'specs') setSpecInput('')
     if (key === 'includes') setIncludeInput('')
-    if (key === 'features') setFeatureInput('')
   }
 
-  const removeListItem = (key: 'specs' | 'includes' | 'features', index: number) => {
+  const removeListItem = (key: 'specs' | 'includes', index: number) => {
     setForm((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== index) }))
   }
 
@@ -217,67 +217,11 @@ export default function KebutuhanAdminPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="form-label">Diskon (%)</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={typeof form.discountPercent === 'string' ? '' : form.discountPercent}
-              onChange={(e) => {
-                const v = e.target.value
-                if (v === '') {
-                  setForm((f) => ({ ...f, discountPercent: '' as '' }))
-                } else {
-                  const num = Math.max(0, Math.min(100, Number(v)))
-                  setForm((f) => ({ ...f, discountPercent: num }))
-                }
-              }}
-              className="form-input no-spin"
-              placeholder="0 - 100"
-              onWheel={(e) => {
-                e.preventDefault()
-                ;(e.currentTarget as HTMLInputElement).blur()
-              }}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              onKeyDown={(e) => {
-                const allowedKeys = [
-                  'Backspace',
-                  'Tab',
-                  'Enter',
-                  'Escape',
-                  'Delete',
-                  'ArrowLeft',
-                  'ArrowRight',
-                  'Home',
-                  'End',
-                ]
-                const isCtrlCombo = e.ctrlKey || e.metaKey
-                const isCtrlAllowed = ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
-                const isNumberKey = /[0-9]/.test(e.key)
-                const isNumpadKey = e.code?.startsWith('Numpad') && /[0-9]/.test(e.key)
-                if (
-                  allowedKeys.includes(e.key) ||
-                  (isCtrlCombo && isCtrlAllowed) ||
-                  isNumberKey ||
-                  isNumpadKey
-                ) {
-                  return
-                }
-                if (
-                  e.key === 'ArrowUp' ||
-                  e.key === 'ArrowDown' ||
-                  e.key === '.' ||
-                  e.key === ',' ||
-                  e.key === '-' ||
-                  e.key === '+' ||
-                  e.key.toLowerCase() === 'e'
-                ) {
-                  e.preventDefault()
-                } else {
-                  e.preventDefault()
-                }
-              }}
+            <label className="form-label">Diskon (Rp)</label>
+            <RupiahInput
+              value={form.discountAmount}
+              onChange={(v) => setForm((f) => ({ ...f, discountAmount: v }))}
+              placeholder="Masukkan potongan harga dalam rupiah"
             />
           </div>
           <div className="md:col-span-2">
@@ -497,44 +441,7 @@ export default function KebutuhanAdminPage() {
             </ul>
           </div>
 
-          {/* Keunggulan Produk */}
-          <div className="md:col-span-4">
-            <label className="form-label">
-              Keunggulan Produk (list)
-            </label>
-            <div className="flex gap-2">
-              <input
-                value={featureInput}
-                onChange={(e) => setFeatureInput(e.target.value)}
-                className="form-input flex-1"
-                placeholder="Tambahkan keunggulan"
-              />
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() => addListItem('features', featureInput)}
-              >
-                Tambah
-              </button>
-            </div>
-            <ul className="mt-2 grid md:grid-cols-2 gap-2">
-              {form.features.map((s, idx) => (
-                <li
-                  key={idx}
-                  className="flex items-center justify-between px-3 py-2 rounded-md bg-gray-50"
-                >
-                  <span className="text-sm text-gray-700">{s}</span>
-                  <button
-                    type="button"
-                    className="text-xs text-red-600 hover:underline"
-                    onClick={() => removeListItem('features', idx)}
-                  >
-                    Hapus
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Keunggulan Produk dihilangkan sesuai permintaan */}
 
           <div className="md:col-span-4 flex items-center justify-end gap-2 sticky bottom-0 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-3 border-t">
             <button

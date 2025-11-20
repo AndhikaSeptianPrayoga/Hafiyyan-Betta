@@ -37,14 +37,11 @@ export default function KebutuhanPage() {
   const onAdd = useCallback(
     (n: Need) => {
       const img = n.mainImage || (n.images && n.images[0]) || ''
-      const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
-      const discounted = hasDiscount
-        ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
-        : n.price
+      const finalPrice = n.price
       const cartItem: Omit<CartItem, 'quantity'> = {
         id: n.id,
         name: n.name,
-        price: `Rp ${discounted.toLocaleString('id-ID')}`,
+        price: `Rp ${finalPrice.toLocaleString('id-ID')}`,
         img,
         category: 'supplies',
       }
@@ -65,9 +62,8 @@ export default function KebutuhanPage() {
         {needs.map((n) => {
           const img = n.mainImage || (n.images && n.images[0]) || ''
           const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
-          const discounted = hasDiscount
-            ? Math.round(n.price * (1 - (n.discountPercent || 0) / 100))
-            : n.price
+          const finalPrice = n.price
+          const originalPrice = hasDiscount ? Math.round(finalPrice / (1 - (n.discountPercent || 0) / 100)) : null
           const stock = typeof n.stock === 'number' ? n.stock : 0
           return (
             <div key={n.id} className="card p-4">
@@ -89,9 +85,9 @@ export default function KebutuhanPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-xl font-bold text-primary-main">Rp {discounted.toLocaleString('id-ID')}</span>
-                {hasDiscount && (
-                  <span className="text-gray-500 line-through">Rp {n.price.toLocaleString('id-ID')}</span>
+                <span className="text-xl font-bold text-primary-main">Rp {finalPrice.toLocaleString('id-ID')}</span>
+                {hasDiscount && originalPrice !== null && (
+                  <span className="text-gray-500 line-through">Rp {originalPrice.toLocaleString('id-ID')}</span>
                 )}
                 {hasDiscount && (
                   <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-700">Diskon {n.discountPercent}%</span>

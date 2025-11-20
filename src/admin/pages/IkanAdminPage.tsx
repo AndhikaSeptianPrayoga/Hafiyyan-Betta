@@ -17,6 +17,8 @@ type Fish = {
   description: string
   typeText: string
   sizeCm: string
+  bodySize?: string
+  tailSize?: string
   color: string
   gender: 'Jantan' | 'Betina' | ''
   condition: string
@@ -33,19 +35,16 @@ type Fish = {
 type FishForm = {
   name: string
   price: number
-  discountPercent: number | ''
+  discountAmount: number
   variety?: string
   description: string
   typeText: string
-  sizeCm: string
+  bodySize: string
+  tailSize: string
   color: string
   gender: 'Jantan' | 'Betina' | ''
-  condition: string
   age: string
-  origin: string
   stock: number | ''
-  advantages: string[]
-  careGuide: string[]
   mainImage: string
   images: string[]
 }
@@ -57,27 +56,22 @@ export default function IkanAdminPage() {
   const [form, setForm] = useState<FishForm>({
     name: '',
     price: 0,
-    discountPercent: 0,
+    discountAmount: 0,
     variety: '',
     description: '',
     typeText: '',
-    sizeCm: '',
+    bodySize: '',
+    tailSize: '',
     color: '',
     gender: '',
-    condition: '',
     age: '',
-    origin: '',
     stock: 0,
-    advantages: [],
-    careGuide: [],
     mainImage: '',
     images: [],
   })
   const [query, setQuery] = useState('')
   const toast = useToast()
   const [confirmId, setConfirmId] = useState<number | null>(null)
-  const [advInput, setAdvInput] = useState('')
-  const [careInput, setCareInput] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
 
   useEffect(() => {
@@ -92,62 +86,66 @@ export default function IkanAdminPage() {
     setForm({
       name: '',
       price: 0,
-      discountPercent: 0,
+      discountAmount: 0,
       variety: '',
       description: '',
       typeText: '',
-      sizeCm: '',
+      bodySize: '',
+      tailSize: '',
       color: '',
       gender: '',
-      condition: '',
       age: '',
-      origin: '',
       stock: 0,
-      advantages: [],
-      careGuide: [],
       mainImage: '',
       images: [],
     })
-    setAdvInput('')
-    setCareInput('')
     formModal.open()
   }
   const openEdit = (n: Fish) => {
     setEditing(n)
+    const hasDiscount = typeof n.discountPercent === 'number' && n.discountPercent > 0
+    const estimatedOriginal = hasDiscount ? Math.round(n.price / (1 - n.discountPercent / 100)) : n.price
+    const discountAmount = Math.max(0, estimatedOriginal - n.price)
     setForm({
       name: n.name,
-      price: n.price,
-      discountPercent: n.discountPercent,
+      price: estimatedOriginal,
+      discountAmount,
       variety: n.variety ?? '',
       description: n.description,
       typeText: n.typeText,
-      sizeCm: n.sizeCm,
+      bodySize: n.bodySize || '',
+      tailSize: n.tailSize || '',
       color: n.color,
       gender: n.gender,
-      condition: n.condition,
       age: n.age,
-      origin: n.origin,
       stock: n.stock,
-      advantages: n.advantages ?? [],
-      careGuide: n.careGuide ?? [],
       mainImage: n.mainImage,
       images: n.images ?? [],
     })
-    setAdvInput('')
-    setCareInput('')
     formModal.open()
   }
   const removeItem = (id: number) => setConfirmId(id)
   const submitForm = (e: React.FormEvent) => {
     e.preventDefault()
-    const discount = typeof form.discountPercent === 'number' ? form.discountPercent : 0
-    // Backend diinterpretasikan menyimpan harga akhir; kirim harga setelah diskon
-    const finalPrice = Math.round(form.price * (1 - discount / 100))
+    const amount = Math.max(0, Math.min(form.price, form.discountAmount || 0))
+    const finalPrice = Math.max(0, form.price - amount)
+    const discountPercent = form.price > 0 ? Math.round((amount / form.price) * 100) : 0
     const payload = {
-      ...form,
+      name: form.name,
       price: finalPrice,
-      discountPercent: discount,
+      discountPercent,
+      variety: form.variety,
+      description: form.description,
+      typeText: form.typeText,
+      sizeCm: '',
+      bodySize: form.bodySize,
+      tailSize: form.tailSize,
+      color: form.color,
+      gender: form.gender,
+      age: form.age,
       stock: typeof form.stock === 'number' ? form.stock : 0,
+      mainImage: form.mainImage,
+      images: form.images,
     }
     if (editing) {
       updateFish(editing.id, payload)
@@ -350,67 +348,11 @@ export default function IkanAdminPage() {
             <p className="form-helper">Klik gambar untuk menjadikannya gambar utama. Pilih beberapa file sekaligus untuk menambah galeri.</p>
           </div>
           <div>
-            <label className="form-label">Diskon (%)</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={typeof form.discountPercent === 'string' ? '' : form.discountPercent}
-              onChange={(e) => {
-                const v = e.target.value
-                if (v === '') {
-                  setForm((f) => ({ ...f, discountPercent: '' as '' }))
-                } else {
-                  const num = Math.max(0, Math.min(100, Number(v)))
-                  setForm((f) => ({ ...f, discountPercent: num }))
-                }
-              }}
-              className="form-input no-spin"
-              placeholder="0-100"
-              onWheel={(e) => {
-                e.preventDefault()
-                ;(e.currentTarget as HTMLInputElement).blur()
-              }}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              onKeyDown={(e) => {
-                const allowedKeys = [
-                  'Backspace',
-                  'Tab',
-                  'Enter',
-                  'Escape',
-                  'Delete',
-                  'ArrowLeft',
-                  'ArrowRight',
-                  'Home',
-                  'End',
-                ]
-                const isCtrlCombo = e.ctrlKey || e.metaKey
-                const isCtrlAllowed = ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())
-                const isNumberKey = /[0-9]/.test(e.key)
-                const isNumpadKey = e.code?.startsWith('Numpad') && /[0-9]/.test(e.key)
-                if (
-                  allowedKeys.includes(e.key) ||
-                  (isCtrlCombo && isCtrlAllowed) ||
-                  isNumberKey ||
-                  isNumpadKey
-                ) {
-                  return
-                }
-                if (
-                  e.key === 'ArrowUp' ||
-                  e.key === 'ArrowDown' ||
-                  e.key === '.' ||
-                  e.key === ',' ||
-                  e.key === '-' ||
-                  e.key === '+' ||
-                  e.key.toLowerCase() === 'e'
-                ) {
-                  e.preventDefault()
-                } else {
-                  e.preventDefault()
-                }
-              }}
+            <label className="form-label">Diskon (Rp)</label>
+            <RupiahInput
+              value={form.discountAmount}
+              onChange={(v) => setForm((f) => ({ ...f, discountAmount: v }))}
+              placeholder="Masukkan nominal potongan harga"
             />
           </div>
           <div>
@@ -498,18 +440,22 @@ export default function IkanAdminPage() {
                 />
               </div>
               <div>
-                <label className="form-label text-xs">Ukuran (cm)</label>
-                <select
-                  value={form.sizeCm}
-                  onChange={(e) => setForm((f) => ({ ...f, sizeCm: e.target.value }))}
-                  className="form-select"
-                >
-                  <option value="">Pilih ukuran</option>
-                  <option value="3-4 cm">3-4 cm</option>
-                  <option value="4-5 cm">4-5 cm</option>
-                  <option value="5-6 cm">5-6 cm</option>
-                  <option value="6-7 cm">6-7 cm</option>
-                </select>
+                <label className="form-label text-xs">Ukuran Body</label>
+                <input
+                  value={form.bodySize}
+                  onChange={(e) => setForm((f) => ({ ...f, bodySize: e.target.value }))}
+                  className="form-input"
+                  placeholder="contoh: 4-5 cm"
+                />
+              </div>
+              <div>
+                <label className="form-label text-xs">Ukuran Ekor</label>
+                <input
+                  value={form.tailSize}
+                  onChange={(e) => setForm((f) => ({ ...f, tailSize: e.target.value }))}
+                  className="form-input"
+                  placeholder="contoh: lebar ekor"
+                />
               </div>
               <div>
                 <label className="form-label text-xs">Warna</label>
@@ -544,15 +490,6 @@ export default function IkanAdminPage() {
                 </div>
               </div>
               <div>
-                <label className="form-label text-xs">Kondisi</label>
-                <input
-                  value={form.condition}
-                  onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
-                  className="form-input"
-                  placeholder="Sehat & Aktif"
-                />
-              </div>
-              <div>
                 <label className="form-label text-xs">Umur</label>
                 <input
                   value={form.age}
@@ -561,83 +498,9 @@ export default function IkanAdminPage() {
                   placeholder="3-4 bulan"
                 />
               </div>
-              <div>
-                <label className="form-label text-xs">Asal</label>
-                <input
-                  value={form.origin}
-                  onChange={(e) => setForm((f) => ({ ...f, origin: e.target.value }))}
-                  className="form-input"
-                  placeholder="Breeding Lokal"
-                />
-              </div>
             </div>
           </div>
-          <div className="md:col-span-2">
-            <label className="form-label">Keunggulan</label>
-            <div className="flex gap-2">
-              <input
-                value={advInput}
-                onChange={(e) => setAdvInput(e.target.value)}
-                className="form-input flex-1"
-                placeholder="Tambahkan keunggulan lalu klik +"
-              />
-              <button
-                type="button"
-                onClick={addAdvantage}
-                className="btn-outline"
-              >
-                +
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {form.advantages.map((a, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 rounded-full bg-primary-light text-primary-dark text-xs inline-flex items-center gap-1"
-                >
-                  {a}
-                  <button
-                    type="button"
-                    className="text-red-600"
-                    onClick={() => removeAdvantageAt(idx)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <label className="form-label">Panduan Perawatan</label>
-            <div className="flex gap-2">
-              <input
-                value={careInput}
-                onChange={(e) => setCareInput(e.target.value)}
-                className="form-input flex-1"
-                placeholder="Tambahkan panduan lalu klik +"
-              />
-              <button
-                type="button"
-                onClick={addCareGuide}
-                className="btn-outline"
-              >
-                +
-              </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {form.careGuide.map((a, idx) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 rounded-full bg-gray-100 text-gray-700 text-xs inline-flex items-center gap-1"
-                >
-                  {a}
-                  <button type="button" className="text-red-600" onClick={() => removeCareAt(idx)}>
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
+          {/* Bagian Keunggulan & Panduan Perawatan dihapus sesuai permintaan */}
           <div className="md:col-span-4 form-actions sticky bottom-0 bg-white py-3">
             <button type="button" className="btn-outline" onClick={formModal.close}>
               Batal

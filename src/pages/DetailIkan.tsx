@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useAppDispatch, addItem } from '../redux'
 import { getFish } from '../admin/services/api'
+import RelatedSection from '../components/RelatedSection'
 
 type Fish = {
   id: number
@@ -12,14 +13,12 @@ type Fish = {
   description?: string
   typeText?: string
   sizeCm?: string
+  bodySize?: string
+  tailSize?: string
   color?: string
   gender?: string
-  condition?: string
   age?: string
-  origin?: string
   stock: number
-  advantages?: string[]
-  careGuide?: string[]
   mainImage?: string | null
   images?: string[] | null
 }
@@ -170,26 +169,46 @@ export default function DetailIkan() {
           {/* Spesifikasi */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-3">Spesifikasi</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(
+            {(() => {
+              const clean = (v?: string | null) => (v && String(v).trim().length > 0 ? v : null)
+              // Susun berpasangan agar lebih mudah dibaca (tidak atas-bawah)
+              const rows: Array<
                 [
-                  { label: 'Jenis', value: ikan.variety || ikan.typeText },
-                  { label: 'Ukuran', value: ikan.sizeCm },
-                  { label: 'Warna', value: ikan.color },
-                  { label: 'Jenis Kelamin', value: ikan.gender },
-                  { label: 'Asal', value: ikan.origin },
-                  { label: 'Kondisi', value: ikan.condition },
-                  { label: 'Umur', value: ikan.age },
-                ] as { label: string; value?: string | null }[]
+                  { label: string; value: string | null },
+                  { label: string; value: string | null }
+                ]
+              > = [
+                [
+                  { label: 'Ukuran Body', value: clean(ikan.bodySize) },
+                  { label: 'Ukuran Ekor', value: clean(ikan.tailSize) },
+                ],
+                [
+                  { label: 'Jenis', value: clean(ikan.variety || ikan.typeText) },
+                  { label: 'Warna', value: clean(ikan.color) },
+                ],
+                [
+                  { label: 'Jenis Kelamin', value: clean(ikan.gender) },
+                  { label: 'Umur', value: clean(ikan.age) },
+                ],
+              ]
+
+              return (
+                <div className="space-y-2">
+                  {rows
+                    .filter(([a, b]) => a.value || b.value)
+                    .map((pair, idx) => (
+                      <div key={idx} className="grid grid-cols-2 gap-2">
+                        {pair.map((item, i) => (
+                          <div key={i} className="flex justify-between py-2 border-b border-gray-100">
+                            <span className="text-gray-600">{item.label}</span>
+                            <span className="font-medium">{item.value ?? '-'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                </div>
               )
-                .filter((s) => s.value && String(s.value).trim().length > 0)
-                .map((s) => (
-                  <div key={s.label} className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">{s.label}</span>
-                    <span className="font-medium">{s.value}</span>
-                  </div>
-                ))}
-            </div>
+            })()}
           </div>
 
           {/* Quantity & Add to Cart */}
@@ -235,87 +254,11 @@ export default function DetailIkan() {
             </div>
           </div>
 
-          {/* Keunggulan */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Keunggulan</h3>
-            {Array.isArray(ikan.advantages) && ikan.advantages.length > 0 ? (
-              <ul className="space-y-2">
-                {ikan.advantages.map((feature: string, index: number) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Tidak ada keunggulan.</p>
-            )}
-          </div>
-
-          {/* Panduan Perawatan */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Panduan Perawatan</h3>
-            {Array.isArray(ikan.careGuide) && ikan.careGuide.length > 0 ? (
-              <ul className="space-y-2">
-                {ikan.careGuide.map((instruction: string, index: number) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>{instruction}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-600">Tidak ada panduan perawatan.</p>
-            )}
-          </div>
+          {/* Bagian Keunggulan & Panduan Perawatan dihapus sesuai permintaan */}
         </div>
       </div>
 
-      {/* Related Products */}
-      <div className="mt-16">
-        <h3 className="text-2xl font-bold text-gray-900 mb-8">Ikan Terkait</h3>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="card">
-            <img
-              src="/img/betta-img/cupang (10).jpg"
-              alt="Ikan Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Cupang Crown Tail</h4>
-            <p className="text-primary-main font-semibold">Rp 120.000</p>
-          </div>
-          <div className="card">
-            <img
-              src="/img/betta-img/cupang (11).jpg"
-              alt="Ikan Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Cupang Double Tail</h4>
-            <p className="text-primary-main font-semibold">Rp 180.000</p>
-          </div>
-          <div className="card">
-            <img
-              src="/img/betta-img/cupang (12).jpg"
-              alt="Ikan Terkait"
-              className="w-full h-48 object-cover rounded-lg mb-4"
-            />
-            <h4 className="font-bold text-gray-900 mb-2">Cupang Plakat</h4>
-            <p className="text-primary-main font-semibold">Rp 100.000</p>
-          </div>
-        </div>
-      </div>
+      <RelatedSection kind="ikan" currentId={ikan.id} />
     </div>
   )
 }

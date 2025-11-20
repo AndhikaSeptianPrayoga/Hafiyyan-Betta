@@ -15,6 +15,8 @@ async function ensureTableAndSeed() {
       description TEXT,
       type_text TEXT,
       size_cm TEXT,
+      body_size_text TEXT,
+      tail_size_text TEXT,
       color TEXT,
       gender TEXT,
       condition TEXT,
@@ -29,6 +31,9 @@ async function ensureTableAndSeed() {
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `)
+  // Ensure new columns exist for deployments with an older schema
+  await query(`ALTER TABLE fish ADD COLUMN IF NOT EXISTS body_size_text TEXT;`).catch(() => {})
+  await query(`ALTER TABLE fish ADD COLUMN IF NOT EXISTS tail_size_text TEXT;`).catch(() => {})
   const { rows } = await query('SELECT COUNT(*)::int AS count FROM fish')
   const count = rows?.[0]?.count ?? 0
   if (count === 0) {
@@ -83,7 +88,7 @@ ensureTableAndSeed().catch((e) => console.error('Ensure fish failed:', e))
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { rows } = await query(
-      `SELECT id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images
+      `SELECT id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", body_size_text as "bodySize", tail_size_text as "tailSize", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images
        FROM fish ORDER BY id DESC`
     )
     res.json(rows)
@@ -98,7 +103,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id)
     const { rows } = await query(
-      `SELECT id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images
+      `SELECT id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", body_size_text as "bodySize", tail_size_text as "tailSize", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images
        FROM fish WHERE id=$1`,
       [id]
     )
@@ -122,6 +127,8 @@ router.post('/', auth, async (req: Request, res: Response) => {
       description,
       typeText,
       sizeCm,
+      bodySize,
+      tailSize,
       color,
       gender,
       condition,
@@ -135,9 +142,9 @@ router.post('/', auth, async (req: Request, res: Response) => {
     } = body
     if (!name || price === undefined) return res.status(400).json({ error: 'Missing name/price' })
     const { rows } = await query(
-      `INSERT INTO fish (name, price, discount_percent, variety, description, type_text, size_cm, color, gender, condition, age, origin, stock, advantages, care_guide, main_image, images)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15::jsonb,$16,$17::jsonb)
-       RETURNING id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images, created_at, updated_at`,
+      `INSERT INTO fish (name, price, discount_percent, variety, description, type_text, size_cm, body_size_text, tail_size_text, color, gender, condition, age, origin, stock, advantages, care_guide, main_image, images)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17::jsonb,$18,$19::jsonb)
+       RETURNING id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", body_size_text as "bodySize", tail_size_text as "tailSize", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images, created_at, updated_at`,
       [
         name,
         Number(price),
@@ -146,6 +153,8 @@ router.post('/', auth, async (req: Request, res: Response) => {
         description || null,
         typeText || null,
         sizeCm || null,
+        bodySize || null,
+        tailSize || null,
         color || null,
         gender || null,
         condition || null,
@@ -173,7 +182,7 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
     const fields: string[] = []
     const values: any[] = []
     let i = 1
-    const map: Record<string, { col: string; transform?: (v: any) => any; json?: boolean }> = {
+  const map: Record<string, { col: string; transform?: (v: any) => any; json?: boolean }> = {
       name: { col: 'name' },
       price: { col: 'price', transform: Number },
       discountPercent: { col: 'discount_percent', transform: Number },
@@ -181,6 +190,8 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
       description: { col: 'description' },
       typeText: { col: 'type_text' },
       sizeCm: { col: 'size_cm' },
+      bodySize: { col: 'body_size_text' },
+      tailSize: { col: 'tail_size_text' },
       color: { col: 'color' },
       gender: { col: 'gender' },
       condition: { col: 'condition' },
@@ -208,7 +219,7 @@ router.put('/:id', auth, async (req: Request, res: Response) => {
     values.push(id)
     const { rows } = await query(
       `UPDATE fish SET ${fields.join(', ')} WHERE id=$${i}
-       RETURNING id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images, created_at, updated_at`,
+       RETURNING id, name, price, discount_percent as "discountPercent", variety, description, type_text as "typeText", size_cm as "sizeCm", body_size_text as "bodySize", tail_size_text as "tailSize", color, gender, condition, age, origin, stock, advantages, care_guide as "careGuide", main_image as "mainImage", images, created_at, updated_at`,
       values
     )
     if (!rows.length) return res.status(404).json({ error: 'Not found' })
